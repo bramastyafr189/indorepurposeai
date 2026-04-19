@@ -4,7 +4,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export const repurposeAllContent = async (content: string, tone: string = "professional") => {
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash",
+    model: "gemini-3.1-flash-lite-preview",
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {

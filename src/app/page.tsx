@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles } from 'lucide-react';
 import { processContent, getHistory, deleteHistory } from './actions';
-import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Youtube as YoutubeIcon, Twitter as TwitterIcon, Linkedin as LinkedinIcon } from '@/components/Icons';
@@ -31,7 +30,6 @@ interface HistoryItem {
 }
 
 export default function Home() {
-  const router = useRouter();
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<'url' | 'text'>('url');
   const [loading, setLoading] = useState(false);
@@ -65,8 +63,6 @@ export default function Home() {
     if (res.success) {
       setResults(res.data);
       toast.success('Konten berhasil diproses!');
-      router.refresh();
-      window.dispatchEvent(new CustomEvent('updateCredits'));
       fetchHistory();
       setTimeout(() => {
         document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });

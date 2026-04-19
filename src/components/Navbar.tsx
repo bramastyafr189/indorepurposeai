@@ -6,15 +6,12 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '../utils/supabase/client';
 import { AuthModal } from './AuthModal';
-import { cn } from '../lib/utils';
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [prevCredits, setPrevCredits] = useState<number | null>(null);
-  const [showMinusOne, setShowMinusOne] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const supabase = createClient();
 
@@ -42,8 +39,9 @@ export function Navbar() {
     let profileSubscription: any = null;
     
     if (user?.id) {
+      console.log('Menyiapkan Realtime untuk User:', user.id);
       profileSubscription = supabase
-        .channel('any') // Gunakan channel general untuk memastikan receive
+        .channel(`profile-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -53,26 +51,23 @@ export function Navbar() {
             filter: `id=eq.${user.id}`,
           },
           (payload) => {
+            console.log('Data Realtime Diterima:', payload.new);
             setProfile(payload.new);
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Status Realtime:', status);
+        });
     }
-
-    // --- MANUAL SYNC SIGNAL ---
-    const handleUpdateSignal = () => {
-      if (user?.id) fetchProfile(user.id);
-    };
-    window.addEventListener('updateCredits', handleUpdateSignal);
 
     return () => {
       subscription.unsubscribe();
-      window.removeEventListener('updateCredits', handleUpdateSignal);
       if (profileSubscription) {
+        console.log('Membersihkan Realtime...');
         supabase.removeChannel(profileSubscription);
       }
     };
-  }, [user?.id]);
+  }, [user?.id]); // Pastikan efek berjalan ulang saat user.id tersedia
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -80,24 +75,8 @@ export function Navbar() {
       .select('*')
       .eq('id', userId)
       .single();
-    if (data) {
-      setProfile(data);
-    }
+    if (data) setProfile(data);
   };
-
-  // Handle detection of credit decrease for animation
-  useEffect(() => {
-    // Jika angka baru lebih kecil dari angka di memori (prevCredits)
-    if (profile && prevCredits !== null && profile.credits !== null && profile.credits < prevCredits) {
-      setShowMinusOne(true);
-      setTimeout(() => setShowMinusOne(false), 1000);
-    }
-    
-    // Perbarui memori (prevCredits) SETELAH pengecekan dilakukan
-    if (profile && profile.credits !== null) {
-      setPrevCredits(profile.credits);
-    }
-  }, [profile?.credits]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -160,34 +139,9 @@ export function Navbar() {
                   className="flex items-center gap-3"
                 >
                   {/* Credits Badge */}
-                  <div className="relative">
-                    <AnimatePresence>
-                      {showMinusOne && (
-                        <motion.span
-                          initial={{ opacity: 0, y: 0, scale: 0.5 }}
-                          animate={{ opacity: 1, y: -20, scale: 1.2 }}
-                          exit={{ opacity: 0 }}
-                          className="absolute -top-2 right-0 text-red-500 dark:text-red-400 font-black text-xs pointer-events-none"
-                        >
-                          -1
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                    <motion.div 
-                      key={profile?.credits}
-                      initial={showMinusOne ? { scale: 1 } : false}
-                      animate={showMinusOne ? { scale: [1, 1.2, 1] } : {}}
-                      transition={{ duration: 0.4 }}
-                      className={cn(
-                        "hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors",
-                        showMinusOne 
-                          ? "bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 shadow-lg shadow-blue-500/20" 
-                          : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800"
-                      )}
-                    >
-                      <Zap size={14} className={cn("transition-colors", showMinusOne ? "fill-blue-700 dark:fill-blue-300" : "fill-blue-600 dark:fill-blue-400")} />
-                      <span className="text-xs font-black uppercase tracking-wider">{profile?.credits ?? '...'} Kredit</span>
-                    </motion.div>
+                  <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                    <Zap size={14} className="fill-blue-600 dark:fill-blue-400" />
+                    <span className="text-xs font-black uppercase tracking-wider">{profile?.credits ?? '...'} Kredit</span>
                   </div>
 
                   {/* Profile Dropdown Simulation */}

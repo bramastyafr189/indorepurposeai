@@ -38,13 +38,13 @@ const itemVariants = {
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" }
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] }
   }
 };
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-32 bg-slate-50 dark:bg-slate-900/40 transition-colors duration-300">
+    <section id="how-it-works" className="py-32 relative z-10 backdrop-blur-md bg-white/10 dark:bg-slate-950/10 transition-colors duration-300">
       <div className="container mx-auto px-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -52,9 +52,9 @@ export function HowItWorks() {
           viewport={{ once: true, margin: "-100px" }}
           className="text-center mb-20"
         >
-          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-6 font-display">Cara Kerja Kami</h2>
-          <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed font-sans">
-            Hanya butuh 3 langkah sederhana untuk meningkatkan kehadiran digital Anda. Kami memproses data Anda dengan privasi tingkat tinggi.
+          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 font-display">Cara Kerja Kami</h2>
+          <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-base md:text-lg leading-relaxed font-sans">
+            Hanya butuh 3 langkah praktis untuk menyulap satu video YouTube menjadi bermacam format konten yang siap viral.
           </p>
         </motion.div>
 
@@ -63,20 +63,35 @@ export function HowItWorks() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto"
+          className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto"
         >
           {steps.map((step, index) => (
             <motion.div
               key={index}
               variants={itemVariants}
-              whileHover={{ y: -10 }}
-              className="group bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all duration-300"
+              animate={{ 
+                y: [0, -5, 0],
+              }}
+              transition={{
+                y: {
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: index * 0.5
+                }
+              }}
+              whileHover={{ 
+                y: -12, 
+                scale: 1.03,
+                transition: { type: "spring", stiffness: 300, damping: 20 }
+              }}
+              className="group bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500"
             >
-              <div className={`w-14 h-14 ${step.color} rounded-2xl flex items-center justify-center text-white mb-8 shadow-lg shadow-current/30 group-hover:scale-110 transition-transform duration-300`}>
-                <step.icon size={28} />
+              <div className={`w-12 h-12 ${step.color} rounded-xl flex items-center justify-center text-white mb-6 shadow-lg shadow-current/30 group-hover:scale-110 transition-transform duration-300`}>
+                <step.icon size={24} />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 font-display">{step.title}</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed font-sans">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 font-display">{step.title}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base leading-relaxed font-sans">
                 {step.description}
               </p>
             </motion.div>

@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "Ubah video YouTube dan teks panjang menjadi postingan viral untuk X, WhatsApp, dan LinkedIn. AI-powered content automation untuk kreator Indonesia.",
 };
 
+import { AntigravityEffect } from "@/components/AntigravityEffect";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,13 +28,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
-      <body className={`${outfit.variable} ${plusJakartaSans.variable} antialiased min-h-screen bg-background text-foreground`}>
+      <body className={`${outfit.variable} ${plusJakartaSans.variable} antialiased min-h-screen bg-background text-foreground relative`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
+          <AntigravityEffect />
           {children}
           <Toaster position="top-center" richColors />
         </ThemeProvider>

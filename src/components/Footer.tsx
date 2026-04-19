@@ -3,7 +3,7 @@ import { Twitter as TwitterIcon, Linkedin as LinkedinIcon, Github as GithubIcon 
 
 export function Footer() {
   return (
-    <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 py-12">
+    <footer className="relative z-10 backdrop-blur-md bg-white/10 dark:bg-slate-950/10 border-t border-slate-200/50 dark:border-slate-800/50 py-12 transition-colors duration-300">
       <div className="container mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">

@@ -6,35 +6,10 @@ import { Sparkles, ArrowDown } from 'lucide-react';
 export function Hero() {
   return (
     <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden py-32 px-6 lg:py-48">
-      {/* Animated Mesh Gradient Background */}
-      <div className="absolute inset-0 -z-20 bg-white dark:bg-slate-950 transition-colors duration-700" />
+      {/* Animated Mesh Gradient Background - Transparent to let Antigravity show through */}
+      <div className="absolute inset-0 -z-20 transition-colors duration-700" />
       
-      {/* Mesh blobs */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none opacity-40 dark:opacity-20 transition-opacity duration-700">
-        <motion.div 
-          animate={{ 
-            x: [0, 100, 0],
-            y: [0, -50, 0],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-400 blur-[120px]" 
-        />
-        <motion.div 
-          animate={{ 
-            x: [0, -80, 0],
-            y: [0, 100, 0],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-indigo-400 blur-[120px]" 
-        />
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.2, 1],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[20%] left-[30%] w-[40%] h-[40%] rounded-full bg-sky-300 blur-[120px] opacity-50" 
-        />
-      </div>
+      {/* Background sudah sepenuhnya di-handle oleh AntigravityEffect */}
       
       <div className="container mx-auto max-w-5xl text-center relative z-10">
         <motion.div
@@ -45,13 +20,13 @@ export function Hero() {
           <motion.div
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-900/20 px-6 py-2.5 text-sm font-bold text-blue-600 dark:text-blue-400 mb-12 shadow-xl shadow-blue-500/10 backdrop-blur-md"
+            className="inline-flex items-center gap-2 rounded-full border border-blue-200/50 bg-blue-50/30 dark:border-blue-900/40 dark:bg-blue-900/20 px-5 py-2 text-xs font-bold text-blue-700 dark:text-blue-400 mb-10 shadow-xl shadow-blue-500/10 backdrop-blur-xl"
           >
             <Sparkles size={16} className="animate-pulse" />
             <span className="tracking-wide">AI GENERATIVE 2026 TERBARU</span>
           </motion.div>
           
-          <h1 className="mb-10 text-6xl md:text-8xl lg:text-9xl font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[0.9] font-display">
+          <h1 className="mb-8 text-5xl md:text-7xl lg:text-[6.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[0.85] font-display">
             Lipat Gandakan <br className="hidden md:block" />
             <motion.span 
               initial={{ opacity: 0, x: -20 }}
@@ -67,7 +42,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 1.2 }}
-            className="mx-auto mb-16 max-w-2xl text-xl md:text-2xl text-slate-600 dark:text-slate-400 leading-relaxed font-sans font-medium"
+            className="mx-auto mb-14 max-w-2xl text-lg md:text-xl text-slate-700 dark:text-slate-300 leading-relaxed font-sans font-medium"
           >
             Platform AI all-in-one untuk kreator Indonesia. Ubah YouTube menjadi konten viral dalam sekejap.
           </motion.p>

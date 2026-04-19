@@ -47,7 +47,7 @@ export default function Home() {
     setHistoryLoading(true);
     const res = await getHistory();
     if (res.success) {
-      setHistory(res.data);
+      setHistory(res.data || []);
     }
     setHistoryLoading(false);
   };
@@ -112,19 +112,19 @@ export default function Home() {
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-              className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl rounded-[3rem] shadow-2xl shadow-blue-500/10 border border-white/40 dark:border-slate-800/60 p-8 md:p-10 relative overflow-hidden glow-blue"
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] as const }}
+              className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl rounded-[2rem] md:rounded-[3rem] shadow-2xl shadow-blue-500/10 border border-white/40 dark:border-slate-800/60 p-6 sm:p-8 md:p-10 relative overflow-hidden glow-blue"
             >
               <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.08] pointer-events-none">
                 <Sparkles size={100} className="text-blue-600" />
               </div>
 
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 relative z-10">
-                <div className="flex gap-2 p-2 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full w-fit relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 relative z-10 w-full">
+                <div className="flex gap-2 p-2 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full w-full sm:w-fit relative overflow-hidden">
                   <button
                     onClick={() => setMode('url')}
                     className={cn(
-                      "relative flex items-center gap-2 px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10",
+                      "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10",
                       mode === 'url' ? "text-blue-600 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     )}
                   >
@@ -143,7 +143,7 @@ export default function Home() {
                   <button
                     onClick={() => setMode('text')}
                     className={cn(
-                      "relative flex items-center gap-2 px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10",
+                      "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10",
                       mode === 'text' ? "text-blue-600 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     )}
                   >
@@ -168,7 +168,7 @@ export default function Home() {
 
               <motion.div 
                 layout 
-                transition={{ duration: 0.85, ease: [0.65, 0, 0.35, 1] }} 
+                transition={{ duration: 0.85, ease: [0.65, 0, 0.35, 1] as const }} 
                 className="mb-8 relative z-10"
               >
                 <AnimatePresence mode="wait" initial={false}>
@@ -180,14 +180,14 @@ export default function Home() {
                       exit={{ opacity: 0, height: 0, y: 10 }}
                       transition={{ 
                         duration: 0.85, 
-                        ease: [0.65, 0, 0.35, 1]
+                        ease: [0.65, 0, 0.35, 1] as const
                       }}
                       className="overflow-hidden p-4 -m-4"
                     >
                       <input
                         type="text"
                         placeholder="Tautkan URL video YouTube, dan biarkan AI kami bekerja..."
-                        className="w-full px-6 py-4 rounded-[2rem] border-2 border-white/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 outline-none transition-all text-lg placeholder:text-slate-400 font-sans shadow-inner"
+                        className="w-full px-5 md:px-6 py-4 rounded-2xl md:rounded-[2rem] border-2 border-white/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 outline-none transition-all text-base md:text-lg placeholder:text-slate-400 font-sans shadow-inner"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                       />
@@ -200,13 +200,13 @@ export default function Home() {
                       exit={{ opacity: 0, height: 0, y: 10 }}
                       transition={{ 
                         duration: 0.85, 
-                        ease: [0.65, 0, 0.35, 1]
+                        ease: [0.65, 0, 0.35, 1] as const
                       }}
                       className="overflow-hidden p-4 -m-4"
                     >
                       <textarea
                         placeholder="Tuliskan draf kasar atau ide brilian Anda di sini..."
-                        className="w-full px-6 py-4 rounded-[2rem] border-2 border-white/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 outline-none transition-all min-h-[250px] text-lg placeholder:text-slate-400 font-sans shadow-inner leading-relaxed"
+                        className="w-full px-5 md:px-6 py-4 rounded-2xl md:rounded-[2rem] border-2 border-white/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 outline-none transition-all min-h-[250px] text-base md:text-lg placeholder:text-slate-400 font-sans shadow-inner leading-relaxed"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                       />
@@ -217,10 +217,10 @@ export default function Home() {
 
               <motion.button
                 layout
-                transition={{ duration: 0.85, ease: [0.65, 0, 0.35, 1] }}
+                transition={{ duration: 0.85, ease: [0.65, 0, 0.35, 1] as const }}
                 onClick={handleProcess}
                 disabled={loading || !input}
-                className="group relative w-full overflow-hidden bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-black py-4 md:py-5 rounded-[2rem] flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-500/30 active:scale-[0.98] text-base md:text-lg"
+                className="group relative w-full overflow-hidden bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-black py-4 md:py-5 rounded-2xl md:rounded-[2rem] flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-500/30 active:scale-[0.98] text-base md:text-lg"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 {loading ? (
@@ -267,8 +267,8 @@ export default function Home() {
                     <div className="inline-block px-5 py-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-8 font-black text-xs uppercase tracking-[0.3em]">
                       Transformation Complete
                     </div>
-                    <h2 className="text-4xl md:text-5xl font-extrabold mb-6 font-display tracking-tight text-slate-900 dark:text-white">Konten Siap Publikasi</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg max-w-2xl mx-auto font-sans leading-relaxed">
+                    <h2 className="text-3xl md:text-5xl font-extrabold mb-4 md:mb-6 font-display tracking-tight text-slate-900 dark:text-white">Konten Siap Publikasi</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto font-sans leading-relaxed">
                       AI telah mengoptimalkan konten Anda untuk setiap platform. Salin hasil di bawah dan mulai bagikan ide Anda!
                     </p>
                   </motion.div>
@@ -305,17 +305,17 @@ export default function Home() {
         <HowItWorks />
 
         {/* Cloud History Section */}
-        <section id="history" className="py-32 px-6 relative z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500">
-          <div className="container mx-auto max-w-5xl">
+        <section id="history" className="py-24 md:py-32 px-4 sm:px-6 relative z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500 w-full">
+          <div className="container mx-auto max-w-5xl w-full">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex items-center justify-between mb-20"
+              className="flex items-center justify-between mb-12 md:mb-20"
             >
               <div>
-                <h2 className="text-4xl font-extrabold mb-3 font-display text-slate-900 dark:text-white">Arsip Proyek</h2>
-                <p className="text-slate-500 dark:text-slate-400 text-lg font-sans font-medium">Riwayat transformasi Anda tersimpan aman di cloud.</p>
+                <h2 className="text-3xl md:text-4xl font-extrabold mb-3 font-display text-slate-900 dark:text-white">Arsip Proyek</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-sans font-medium">Riwayat transformasi Anda tersimpan aman di cloud.</p>
               </div>
             </motion.div>
 
@@ -330,14 +330,14 @@ export default function Home() {
                   hidden: {},
                   visible: { transition: { staggerChildren: 0.1 } }
                 }}
-                className="grid gap-6"
+                className="grid gap-5 md:gap-6 w-full"
               >
                 {history.map((item, index) => (
                   <motion.div 
                     key={item.id}
                     variants={{
                       hidden: { opacity: 0, scale: 0.95 },
-                      visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
+                      visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } }
                     }}
                     animate={{ 
                       y: [0, -4, 0],
@@ -356,25 +356,25 @@ export default function Home() {
                       transition: { type: "spring", stiffness: 400, damping: 25 }
                     }}
                     onClick={() => loadFromHistory(item)}
-                    className="group relative backdrop-blur-md hover:backdrop-blur-none bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-8 rounded-[2.5rem] hover:bg-white dark:hover:bg-slate-900 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 cursor-pointer flex flex-col md:flex-row items-center justify-between gap-6"
+                    className="group relative backdrop-blur-md hover:backdrop-blur-none bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] hover:bg-white dark:hover:bg-slate-900 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 w-full max-w-full overflow-hidden"
                   >
-                    <div className="flex items-center gap-6 w-full overflow-hidden">
+                    <div className="flex items-center gap-4 md:gap-6 w-full">
                       <div className={cn(
-                        "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3",
+                        "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3",
                         item.mode === 'url' ? "bg-red-50 dark:bg-red-500/10 text-red-600" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600"
                       )}>
                         {item.mode === 'url' ? <YoutubeIcon size={32} /> : <FileText size={32} />}
                       </div>
-                      <div className="overflow-hidden w-full">
-                        <p className="font-extrabold text-xl md:text-2xl text-slate-900 dark:text-white truncate font-display mb-2">
+                      <div className="min-w-0 flex-1 group/text pb-1">
+                        <p className="font-extrabold text-lg md:text-2xl text-slate-900 dark:text-white truncate font-display mb-1 md:mb-2 max-w-full">
                           {item.input}
                         </p>
-                        <div className="flex items-center gap-5">
-                          <span className="text-[10px] font-black uppercase tracking-[0.25em] px-4 py-2 rounded-xl bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-sans shadow-sm">
+                        <div className="flex items-center gap-3 w-fit">
+                          <span className="inline-flex items-center shrink-0 text-[10px] font-black uppercase tracking-[0.25em] px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-sans shadow-sm leading-none">
                             {item.mode === 'url' ? 'YouTube' : 'Artikel'}
                           </span>
-                          <span className="text-sm font-bold text-slate-400 font-sans">
-                            {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          <span className="text-xs md:text-sm font-bold text-slate-400 font-sans">
+                            {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </span>
                         </div>
                       </div>
@@ -428,11 +428,11 @@ function ResultCard({ title, icon, content, onCopy, index }: any) {
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: index * 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 overflow-hidden group glow-blue"
+      transition={{ delay: index * 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const }}
+      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-2xl md:rounded-3xl border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 overflow-hidden group glow-blue"
     >
-      <div className="p-6 lg:p-8 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
-        <div className="flex items-center gap-4 font-extrabold text-slate-900 dark:text-white font-display">
+      <div className="p-5 md:p-6 lg:p-8 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
+        <div className="flex items-center gap-3 md:gap-4 font-extrabold text-slate-900 dark:text-white font-display">
           <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm transition-transform duration-500 group-hover:scale-110 group-hover:rotate-2">
             {icon}
           </div>
@@ -459,7 +459,7 @@ function ResultCard({ title, icon, content, onCopy, index }: any) {
           )}
         </button>
       </div>
-      <div className="p-8 lg:p-10 flex-1 whitespace-pre-wrap text-base leading-relaxed text-slate-600 dark:text-slate-300 overflow-auto max-h-[500px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 font-sans font-medium">
+      <div className="p-6 md:p-8 lg:p-10 flex-1 whitespace-pre-wrap text-sm md:text-base leading-relaxed text-slate-600 dark:text-slate-300 overflow-auto max-h-[400px] md:max-h-[500px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 font-sans font-medium">
         {content}
       </div>
     </motion.div>

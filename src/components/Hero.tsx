@@ -26,8 +26,8 @@ export function Hero() {
             <span className="tracking-wide">AI GENERATIVE 2026 TERBARU</span>
           </motion.div>
           
-          <h1 className="mb-8 text-5xl md:text-7xl lg:text-[6.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[0.85] font-display">
-            Lipat Gandakan <br className="hidden md:block" />
+          <h1 className="mb-6 text-[2.75rem] sm:text-6xl md:text-7xl lg:text-[6.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[0.9] md:leading-[0.85] font-display break-words max-w-full mx-auto">
+            Lipat Gandakan <br />
             <motion.span 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -42,7 +42,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 1.2 }}
-            className="mx-auto mb-14 max-w-2xl text-lg md:text-xl text-slate-700 dark:text-slate-300 leading-relaxed font-sans font-medium"
+            className="mx-auto mb-14 max-w-2xl text-base md:text-lg lg:text-xl text-slate-700 dark:text-slate-300 leading-relaxed font-sans font-medium px-4 md:px-0"
           >
             Platform AI all-in-one untuk kreator Indonesia. Ubah YouTube menjadi konten viral dalam sekejap.
           </motion.p>

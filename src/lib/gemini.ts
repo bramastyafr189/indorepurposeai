@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-export const repurposeAllContent = async (content: string) => {
+export const repurposeAllContent = async (content: string, tone: string = "professional") => {
   const model = genAI.getGenerativeModel({ 
     model: "gemini-2.5-flash",
     generationConfig: {
@@ -17,14 +17,26 @@ export const repurposeAllContent = async (content: string) => {
         required: ["x", "whatsapp", "linkedin"]
       }
     }
-  } as any); // Use 'as any' if SchemaType enum causes typing issues in older SDK versions
+  } as any);
+
+  const toneInstructions: Record<string, string> = {
+    professional: "Gunakan gaya bahasa Profesional: Baku, edukatif, berwibawa, dan sangat terstruktur.",
+    casual: "Gunakan gaya bahasa Santai: Seperti mengobrol dengan teman, gunakan istilah semi-formal, hangat, dan mudah dimengerti.",
+    inspirational: "Gunakan gaya bahasa Inspiratif: Penuh motivasi, berenergi, gunakan teknik storytelling yang menyentuh emosi.",
+    witty: "Gunakan gaya bahasa Witty/Lucu: Cerdas, penuh humor, gunakan perumpamaan yang unik (pun), dan sedikit sarkasme yang sopan.",
+    genz: "Gunakan gaya bahasa Gen-Z: Ekspresif, gunakan istilah tren masa kini, banyak emoji, singkat, dan berenergi tinggi."
+  };
+
+  const selectedTone = toneInstructions[tone] || toneInstructions.professional;
 
   const prompt = `Analisis konten berikut dan hasilkan 3 variasi postingan media sosial dalam Bahasa Indonesia:
     
-    1. X (Twitter) Thread: Kasual, informatif, maksimal 5 tweet, ada hook kuat.
+    PENTING: ${selectedTone}
+
+    1. X (Twitter) Thread: Maksimal 5 tweet, ada hook pembuka yang kuat sesuai gaya bahasa di atas.
     2. Pesan WhatsApp: Singkat, padat, gunakan poin-poin/bullet, tambahkan emoji, fokus pada manfaat.
     3. Postingan LinkedIn: Profesional, inspiratif, gunakan struktur Hook -> Pembahasan -> Key Takeaway -> CTA.
-
+    
     Konten: ${content}
 
     Kembalikan hasil dalam format JSON.`;
@@ -34,8 +46,7 @@ export const repurposeAllContent = async (content: string) => {
   return JSON.parse(response.text());
 };
 
-// Keep old function for compatibility if needed, but refactor to use newer model or combined call
-export const repurposeContent = async (content: string, platform: 'x' | 'whatsapp' | 'linkedin') => {
-  const results = await repurposeAllContent(content);
+export const repurposeContent = async (content: string, platform: 'x' | 'whatsapp' | 'linkedin', tone: string = "professional") => {
+  const results = await repurposeAllContent(content, tone);
   return results[platform];
 };

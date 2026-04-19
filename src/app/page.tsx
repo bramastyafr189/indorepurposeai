@@ -4,25 +4,25 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles } from 'lucide-react';
 import { processContent, getHistory, deleteHistory } from './actions';
+import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Youtube as YoutubeIcon, Twitter as TwitterIcon, Linkedin as LinkedinIcon } from '@/components/Icons';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { HowItWorks } from '@/components/HowItWorks';
+import { Pricing } from '@/components/Pricing';
 import { Footer } from '@/components/Footer';
 import { HistorySkeleton } from '@/components/HistorySkeleton';
 import { toast } from 'sonner';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
 
 interface HistoryItem {
   id: string;
   timestamp: number;
   input: string;
   mode: 'url' | 'text';
+  tone: string;
   results: {
     x: string;
     whatsapp: string;
@@ -31,6 +31,7 @@ interface HistoryItem {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<'url' | 'text'>('url');
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,7 @@ export default function Home() {
   const [results, setResults] = useState<{ x: string, whatsapp: string, linkedin: string } | null>(null);
   const [error, setError] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [tone, setTone] = useState<string>('professional');
 
   useEffect(() => {
     fetchHistory();
@@ -58,11 +60,13 @@ export default function Home() {
     setError('');
     setResults(null);
 
-    const res = await processContent(input, mode);
+    const res = await processContent(input, mode, tone);
     
     if (res.success) {
       setResults(res.data);
       toast.success('Konten berhasil diproses!');
+      router.refresh();
+      window.dispatchEvent(new CustomEvent('updateCredits'));
       fetchHistory();
       setTimeout(() => {
         document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
@@ -136,8 +140,13 @@ export default function Home() {
                       />
                     )}
                     <div className="relative z-20 flex items-center gap-2">
-                      <YoutubeIcon size={18} />
-                      <span>YouTube</span>
+                      <div className="flex -space-x-1 items-center">
+                        <YoutubeIcon size={18} />
+                        <div className="bg-white dark:bg-slate-700 rounded-full p-0.5 border border-slate-200 dark:border-slate-800 -ml-1.5 mt-2">
+                          <ArrowUpRight size={10} className="text-blue-600" />
+                        </div>
+                      </div>
+                      <span>Tautan</span>
                     </div>
                   </button>
                   <button
@@ -186,7 +195,7 @@ export default function Home() {
                     >
                       <input
                         type="text"
-                        placeholder="Tautkan URL video YouTube, dan biarkan AI kami bekerja..."
+                        placeholder="Tempel URL YouTube atau link artikel berita/blog..."
                         className="w-full px-5 md:px-6 py-4 rounded-2xl md:rounded-[2rem] border-2 border-white/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 outline-none transition-all text-base md:text-lg placeholder:text-slate-400 font-sans shadow-inner"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -214,6 +223,43 @@ export default function Home() {
                   )}
                 </AnimatePresence>
               </motion.div>
+
+              {/* Brand Voice Selector */}
+              <div className="mb-10 relative z-10">
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4 ml-2">
+                  Pilih Gaya Bahasa AI (Brand Voice)
+                </p>
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                  {[
+                    { id: 'professional', label: 'Profesional', icon: '👔' },
+                    { id: 'casual', label: 'Santai', icon: '😎' },
+                    { id: 'inspirational', label: 'Inspiratif', icon: '✨' },
+                    { id: 'witty', label: 'Witty', icon: '🧠' },
+                    { id: 'genz', label: 'Gen-Z', icon: '🚀' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTone(t.id)}
+                      className={cn(
+                        "relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 font-bold text-xs border shadow-sm",
+                        tone === t.id 
+                          ? "bg-blue-600 border-blue-600 text-white shadow-blue-500/20 scale-105 z-10" 
+                          : "bg-white/50 dark:bg-slate-800/50 border-white/20 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"
+                      )}
+                    >
+                      <span>{t.icon}</span>
+                      <span>{t.label}</span>
+                      {tone === t.id && (
+                        <motion.div 
+                          layoutId="activeTone"
+                          className="absolute inset-0 bg-blue-600 rounded-xl -z-10"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <motion.button
                 layout
@@ -304,6 +350,8 @@ export default function Home() {
 
         <HowItWorks />
 
+        <Pricing />
+
         {/* Cloud History Section */}
         <section id="history" className="py-24 md:py-32 px-4 sm:px-6 relative z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500 w-full">
           <div className="container mx-auto max-w-5xl w-full">
@@ -370,8 +418,11 @@ export default function Home() {
                           {item.input}
                         </p>
                         <div className="flex items-center gap-3 w-fit">
-                          <span className="inline-flex items-center shrink-0 text-[10px] font-black uppercase tracking-[0.25em] px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-sans shadow-sm leading-none">
+                          <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.25em] px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-sans shadow-sm leading-none">
                             {item.mode === 'url' ? 'YouTube' : 'Artikel'}
+                          </span>
+                          <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.25em] px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-sans shadow-sm leading-none capitalize">
+                            {item.tone}
                           </span>
                           <span className="text-xs md:text-sm font-bold text-slate-400 font-sans">
                             {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}

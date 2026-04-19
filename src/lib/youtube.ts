@@ -2,8 +2,8 @@ import { YoutubeTranscript } from 'youtube-transcript';
 
 export const getYoutubeTranscript = async (url: string) => {
   try {
-    // Extract video ID from URL
-    const videoIdMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/);
+    // Extract video ID from URL (handles watch?v=ID, youtu.be/ID, and extra parameters like &pp=...)
+    const videoIdMatch = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11}).*/);
     const videoId = videoIdMatch ? videoIdMatch[1] : url;
 
     const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);

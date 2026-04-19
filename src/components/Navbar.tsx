@@ -13,7 +13,20 @@ export function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [showMinusOne, setShowMinusOne] = useState(false);
+  const [prevCredits, setPrevCredits] = useState<number | null>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    if (profile?.credits !== undefined) {
+      if (prevCredits !== null && profile.credits < prevCredits) {
+        // Trigger animation
+        setShowMinusOne(true);
+        setTimeout(() => setShowMinusOne(false), 1000);
+      }
+      setPrevCredits(profile.credits);
+    }
+  }, [profile?.credits]);
 
   useEffect(() => {
     setMounted(true);
@@ -139,9 +152,35 @@ export function Navbar() {
                   className="flex items-center gap-3"
                 >
                   {/* Credits Badge */}
-                  <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                  <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 relative">
                     <Zap size={14} className="fill-blue-600 dark:fill-blue-400" />
-                    <span className="text-xs font-black uppercase tracking-wider">{profile?.credits ?? '...'} Kredit</span>
+                    
+                    <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1">
+                      <motion.span
+                        key={profile?.credits}
+                        initial={{ scale: 1.5 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                        className="inline-block"
+                      >
+                        {profile?.credits ?? '...'}
+                      </motion.span>
+                      <span>Kredit</span>
+                    </span>
+
+                    {/* Floating -1 Animation */}
+                    <AnimatePresence>
+                      {showMinusOne && (
+                        <motion.span
+                          initial={{ opacity: 0, y: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, y: -20, scale: 1.2 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="absolute right-2 top-0 text-red-500 font-black text-sm z-50 pointer-events-none"
+                        >
+                          -1
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Profile Dropdown Simulation */}

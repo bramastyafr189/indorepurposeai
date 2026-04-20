@@ -63,6 +63,10 @@ export default function Home() {
     if (res.success) {
       setResults(res.data);
       toast.success('Konten berhasil diproses!');
+      
+      // Notify components to refresh credits
+      window.dispatchEvent(new CustomEvent('credits-updated'));
+      
       fetchHistory();
       setTimeout(() => {
         document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });

@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '../utils/supabase/client';
 import { AuthModal } from './AuthModal';
 
+const supabase = createClient();
+
 export function Navbar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -15,7 +17,6 @@ export function Navbar() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showMinusOne, setShowMinusOne] = useState(false);
   const [prevCredits, setPrevCredits] = useState<number | null>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     if (profile?.credits !== undefined) {
@@ -73,8 +74,17 @@ export function Navbar() {
         });
     }
 
+    // --- MANUAL REFRESH FALLBACK ---
+    const handleManualRefresh = () => {
+      console.log('Manual refresh triggered...');
+      if (user?.id) fetchProfile(user.id);
+    };
+
+    window.addEventListener('credits-updated', handleManualRefresh);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('credits-updated', handleManualRefresh);
       if (profileSubscription) {
         console.log('Membersihkan Realtime...');
         supabase.removeChannel(profileSubscription);

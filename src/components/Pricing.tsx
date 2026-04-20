@@ -1,8 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, Sparkles, Zap, Shield, HelpCircle } from 'lucide-react';
+import { Check, Sparkles, Shield, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createTransaction } from '@/app/paymentActions';
+import { toast } from 'sonner';
 
 const plans = [
   {
@@ -55,6 +57,43 @@ const plans = [
 ];
 
 export function Pricing() {
+  const handlePurchase = async (plan: any) => {
+    if (plan.price === '0') {
+      toast.info('Paket Free sudah aktif di akun Anda.');
+      return;
+    }
+
+    const priceNum = parseInt(plan.price.replace(/\./g, ''));
+    toast.loading('Menyiapkan pembayaran...');
+    
+    const res = await createTransaction(plan.name, priceNum);
+    
+    toast.dismiss();
+
+    if (res.success && res.token) {
+      // @ts-ignore
+      window.snap.pay(res.token, {
+        onSuccess: (result: any) => {
+          toast.success('Pembayaran Berhasil! Kredit Anda akan segera bertambah.');
+          console.log('Success:', result);
+        },
+        onPending: (result: any) => {
+          toast.info('Menunggu pembayaran Anda.');
+          console.log('Pending:', result);
+        },
+        onError: (result: any) => {
+          toast.error('Pembayaran Gagal. Silakan coba lagi.');
+          console.error('Error:', result);
+        },
+        onClose: () => {
+          toast.info('Pembayaran dibatalkan.');
+        }
+      });
+    } else {
+      toast.error(res.error || 'Gagal memulai pembayaran.');
+    }
+  };
+
   return (
     <section id="pricing" className="py-24 md:py-32 relative overflow-hidden z-10">
       {/* Background decoration */}
@@ -148,9 +187,11 @@ export function Pricing() {
                 plan.highlight 
                   ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 active:scale-95" 
                   : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white active:scale-95"
-              )}>
-                {plan.cta}
-              </button>
+              )}
+              onClick={() => handlePurchase(plan)}
+            >
+              {plan.cta}
+            </button>
             </motion.div>
           ))}
         </div>

@@ -3,6 +3,7 @@ import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "sonner";
+import Script from "next/script";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -38,6 +39,11 @@ export default function RootLayout({
           <AntigravityEffect />
           {children}
           <Toaster position="top-center" richColors />
+          <Script
+            src="https://app.sandbox.midtrans.com/snap/snap.js"
+            data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+            strategy="beforeInteractive"
+          />
         </ThemeProvider>
       </body>
     </html>

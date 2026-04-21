@@ -323,7 +323,7 @@ export async function approveTransaction(transactionId: string) {
     // 2. Get user profile
     const { data: profile, error: pError } = await supabase
       .from('profiles')
-      .select('credits')
+      .select('credits, plan_expires_at')
       .eq('id', tx.user_id)
       .single();
 
@@ -335,9 +335,18 @@ export async function approveTransaction(transactionId: string) {
     else if (tx.plan_name === 'Agency') creditsToAdd = 500;
     else creditsToAdd = 10; // Default
 
-    // 4. Calculate Expiry (30 Days from now)
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 30);
+    // 4. Calculate New Expiry Date (Stacking Logic)
+    const now = new Date();
+    let newExpiryDate = new Date();
+    
+    // If user has a future expiry date, add 30 days to it
+    if (profile.plan_expires_at && new Date(profile.plan_expires_at) > now) {
+      newExpiryDate = new Date(profile.plan_expires_at);
+      newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+    } else {
+      // Otherwise, add 30 days from now
+      newExpiryDate.setDate(now.getDate() + 30);
+    }
 
     // 5. Atomic Updates (Credits, Status, & Expiry)
     const { error: updateError } = await supabase
@@ -345,7 +354,7 @@ export async function approveTransaction(transactionId: string) {
       .update({ 
         credits: (profile.credits || 0) + creditsToAdd,
         plan_name: tx.plan_name,
-        plan_expires_at: expiryDate.toISOString()
+        plan_expires_at: newExpiryDate.toISOString()
       })
       .eq('id', tx.user_id);
 

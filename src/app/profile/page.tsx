@@ -120,13 +120,6 @@ export default function ProfilePage() {
                   <PlanIcon size={14} />
                   Paket {profile?.plan_name || 'Free'}
                 </div>
-
-                {profile?.plan_name !== 'Free' && profile?.plan_expires_at && (
-                  <div className="mt-4 flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Masa Aktif</span>
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Sampai {formatDate(profile.plan_expires_at)}</span>
-                  </div>
-                )}
               </div>
 
               <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none font-medium">

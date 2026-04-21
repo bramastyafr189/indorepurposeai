@@ -55,7 +55,7 @@ export function Hero() {
           >
             <div className="flex items-center gap-4 text-xs font-black text-slate-400 uppercase tracking-[0.4em]">
               <span className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800" />
-              Trusted by 500+ Creators
+              Proudly Supporting Local Creators
               <span className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800" />
             </div>
           </motion.div>

@@ -343,15 +343,25 @@ export async function cancelTransaction(transactionId: string) {
   }
 }
 
-// --- ADMIN ACTIONS ---
+// Helper to check if current user is an admin
+async function checkIsAdmin(supabase: any) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
 
-const ADMIN_EMAILS = ['bramastyafr@gmail.com']; // GANTI DENGAN EMAIL ANDA
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  return data?.role === 'admin';
+}
 
 export async function getVerifyingTransactions() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const isAdmin = await checkIsAdmin(supabase);
   
-  if (!user || !ADMIN_EMAILS.includes(user.email || '')) {
+  if (!isAdmin) {
     return { success: false, error: 'Unauthorized' };
   }
 
@@ -377,9 +387,9 @@ export async function getVerifyingTransactions() {
 
 export async function approveTransaction(transactionId: string) {
   const supabase = await createClient();
-  const { data: { user: adminUser } } = await supabase.auth.getUser();
+  const isAdmin = await checkIsAdmin(supabase);
   
-  if (!adminUser || !ADMIN_EMAILS.includes(adminUser.email || '')) {
+  if (!isAdmin) {
     return { success: false, error: 'Unauthorized' };
   }
 
@@ -449,9 +459,9 @@ export async function approveTransaction(transactionId: string) {
 
 export async function rejectTransaction(transactionId: string) {
   const supabase = await createClient();
-  const { data: { user: adminUser } } = await supabase.auth.getUser();
+  const isAdmin = await checkIsAdmin(supabase);
   
-  if (!adminUser || !ADMIN_EMAILS.includes(adminUser.email || '')) {
+  if (!isAdmin) {
     return { success: false, error: 'Unauthorized' };
   }
 
@@ -464,6 +474,139 @@ export async function rejectTransaction(transactionId: string) {
     if (error) throw error;
     return { success: true };
   } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+import { createAdminClient } from "@/utils/supabase/admin";
+
+export async function getAdminStats() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  // Use admin client to bypass RLS for stats
+  const adminSupabase = createAdminClient();
+
+  try {
+    // 1. Get total users
+    const { count: userCount } = await adminSupabase.from('profiles').select('*', { count: 'exact', head: true });
+
+    // 2. Get total revenue (Success transactions)
+    const { data: revenueData } = await adminSupabase
+      .from('transactions')
+      .select('amount, unique_code')
+      .eq('status', 'success');
+
+    const totalRevenue = (revenueData || []).reduce((acc, curr) => acc + curr.amount + (curr.unique_code || 0), 0);
+
+    // 3. Get pending verifications
+    const { count: pendingCount } = await adminSupabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'verifying');
+
+    // 4. Get active subscriptions (Non-Free & Not Expired)
+    const now = new Date().toISOString();
+    const { count: activeSubs } = await adminSupabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .neq('plan_name', 'Free')
+      .gt('plan_expires_at', now);
+
+    return {
+      success: true,
+      data: {
+        totalUsers: userCount || 0,
+        totalRevenue,
+        pendingVerifications: pendingCount || 0,
+        activeSubscriptions: activeSubs || 0
+      }
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getAllTransactions() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  const adminSupabase = createAdminClient();
+
+  try {
+    const { data, error } = await adminSupabase
+      .from('transactions')
+      .select(`
+        *,
+        profiles (
+          email
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getAllUsers() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  const adminSupabase = createAdminClient();
+
+  try {
+    const { data, error } = await adminSupabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getAllHistoryAdmin() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  const adminSupabase = createAdminClient();
+
+  try {
+    // Try with Join first
+    let { data, error } = await adminSupabase
+      .from('history')
+      .select(`
+        *,
+        profiles (
+          email
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    // If join fails (e.g. no Foreign Key defined), fallback to simple select
+    if (error) {
+      console.error('History Join Error:', error.message);
+      const { data: simpleData, error: simpleError } = await adminSupabase
+        .from('history')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (simpleError) throw simpleError;
+      return { success: true, data: simpleData };
+    }
+
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('getAllHistoryAdmin Final Error:', error.message);
     return { success: false, error: error.message };
   }
 }

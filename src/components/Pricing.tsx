@@ -106,7 +106,7 @@ export function Pricing() {
             viewport={{ once: true }}
             className="inline-block px-4 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-6 font-black text-xs uppercase tracking-[0.3em]"
           >
-            Pricing Plans Indo
+            Pricing Plans
           </motion.div>
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}

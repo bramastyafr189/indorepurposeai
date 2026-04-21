@@ -239,7 +239,7 @@ export default function ProfilePage() {
                       <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-900/30 rounded-[2.5rem] p-8 relative overflow-hidden group"
+                        className="bg-amber-50 dark:bg-transparent backdrop-blur-xl border-2 border-amber-200 dark:border-amber-900/30 rounded-[2.5rem] p-8 relative overflow-hidden group shadow-xl shadow-amber-500/5"
                       >
                          <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-700">
                           <AlertCircle size={150} className="text-amber-500" />
@@ -349,8 +349,14 @@ export default function ProfilePage() {
 
                         <div className="flex flex-wrap gap-4">
                           <Link 
+                            href="/#transform"
+                            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98]"
+                          >
+                            Mulai Repurpose Konten <Sparkles size={18} />
+                          </Link>
+                          <Link 
                             href="/#pricing"
-                            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98]"
+                            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-2xl font-black text-sm uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700 active:scale-[0.98]"
                           >
                             Isi Ulang Kredit
                           </Link>

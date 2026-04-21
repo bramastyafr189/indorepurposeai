@@ -110,7 +110,7 @@ export default function Home() {
         <Hero />
 
         {/* Tool Section */}
-        <section className="py-24 px-6 relative z-10 transition-colors duration-500">
+        <section id="transform" className="py-24 px-6 relative z-10 transition-colors duration-500">
           <div className="container mx-auto max-w-4xl">
             <motion.div 
               initial={{ opacity: 0, y: 40 }}

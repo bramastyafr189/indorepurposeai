@@ -180,12 +180,36 @@ export async function getProfile() {
       }
     }
     
+    // --- GET PENDING TRANSACTION & AUTO-EXPIRE ---
+    const { data: pendingTx } = await supabase
+      .from('transactions')
+      .select('*')
+      .or('status.eq.pending,status.eq.verifying')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (pendingTx && pendingTx.status === 'pending') {
+      const expiryTime = new Date(pendingTx.created_at).getTime() + 24 * 60 * 60 * 1000;
+      if (new Date().getTime() > expiryTime) {
+        // Auto-expire!
+        await supabase
+          .from('transactions')
+          .update({ status: 'expired' })
+          .eq('id', pendingTx.id);
+        
+        pendingTx.status = 'expired';
+      }
+    }
+
     return { 
       success: true, 
       data: {
         ...profile,
         email: user.email,
-        created_at: user.created_at // Use Auth user registration date
+        created_at: user.created_at,
+        pendingTransaction: (pendingTx && (pendingTx.status === 'pending' || pendingTx.status === 'verifying')) ? pendingTx : null
       }
     };
   } catch (error: any) {
@@ -206,13 +230,26 @@ export async function getTransactionHistory() {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { success: true, data };
+
+    // Check for any 'pending' transactions in history that should be 'expired'
+    const updatedData = await Promise.all((data || []).map(async (tx) => {
+      if (tx.status === 'pending') {
+        const expiryTime = new Date(tx.created_at).getTime() + 24 * 60 * 60 * 1000;
+        if (new Date().getTime() > expiryTime) {
+          await supabase.from('transactions').update({ status: 'expired' }).eq('id', tx.id);
+          return { ...tx, status: 'expired' };
+        }
+      }
+      return tx;
+    }));
+
+    return { success: true, data: updatedData };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
 
-export async function initiateCheckout(planName: string, amount: number) {
+export async function initiateCheckout(planName: string, amount: number, paymentMethod?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -228,7 +265,16 @@ export async function initiateCheckout(planName: string, amount: number) {
       .eq('status', 'pending')
       .single();
 
-    if (existing) return { success: true, data: existing };
+    if (existing) {
+      // Update payment method if it changed
+      if (paymentMethod && existing.payment_method !== paymentMethod) {
+        await supabase
+          .from('transactions')
+          .update({ payment_method: paymentMethod })
+          .eq('id', existing.id);
+      }
+      return { success: true, data: existing };
+    }
 
     // 2. Generate unique code (1-999)
     const uniqueCode = Math.floor(Math.random() * 999) + 1;
@@ -243,7 +289,8 @@ export async function initiateCheckout(planName: string, amount: number) {
         amount: amount,
         plan_name: planName,
         status: 'pending',
-        unique_code: uniqueCode
+        unique_code: uniqueCode,
+        payment_method: paymentMethod || null
       })
       .select()
       .single();
@@ -261,6 +308,21 @@ export async function confirmPaymentSent(transactionId: string) {
     const { error } = await supabase
       .from('transactions')
       .update({ status: 'verifying' })
+      .eq('id', transactionId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function cancelTransaction(transactionId: string) {
+  const supabase = await createClient();
+  try {
+    const { error } = await supabase
+      .from('transactions')
+      .update({ status: 'cancelled' })
       .eq('id', transactionId);
 
     if (error) throw error;
@@ -385,7 +447,7 @@ export async function rejectTransaction(transactionId: string) {
   try {
     const { error } = await supabase
       .from('transactions')
-      .update({ status: 'failed' })
+      .update({ status: 'rejected' })
       .eq('id', transactionId);
 
     if (error) throw error;

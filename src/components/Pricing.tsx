@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { initiateCheckout } from '@/app/actions';
+import { initiateCheckout, getProfile } from '@/app/actions';
 
 const plans = [
   {
@@ -81,18 +81,16 @@ export function Pricing() {
       return;
     }
 
-    toast.loading('Menyiapkan halaman pembayaran...');
-    const priceNum = parseInt(plan.price.replace(/\./g, ''));
-    
-    const res = await initiateCheckout(plan.name, priceNum);
-    
-    toast.dismiss();
-
-    if (res.success) {
-      router.push(`/checkout/${plan.name}`);
-    } else {
-      toast.error(res.error || 'Gagal menyiapkan pembayaran.');
+    // Check for pending transactions to prevent duplicates
+    const profileRes = await getProfile();
+    if (profileRes.success && profileRes.data.pendingTransaction) {
+      toast.error('Anda memiliki transaksi yang masih aktif. Mohon selesaikan atau batalkan terlebih dahulu di halaman profil.');
+      router.push('/profile');
+      return;
     }
+
+    // Delay checkout initiation until the final confirmation step
+    router.push(`/checkout/${plan.name}`);
   };
 
   return (

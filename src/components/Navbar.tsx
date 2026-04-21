@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes';
 import { Sun, Moon, Share2, LogOut, User, Zap, LogIn } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { createClient } from '../utils/supabase/client';
 import { AuthModal } from './AuthModal';
 
@@ -121,26 +122,24 @@ export function Navbar() {
     <>
       <nav className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md transition-colors duration-300 font-sans">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 cursor-pointer"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          <Link 
+            href="/"
+            className="flex items-center gap-2 cursor-pointer group"
           >
-            <div className="rounded-lg bg-blue-600 p-1.5 shadow-lg shadow-blue-500/20">
+            <div className="rounded-lg bg-blue-600 p-1.5 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
               <Share2 className="text-white" size={20} />
             </div>
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
               IndoRepurpose AI
             </span>
-          </motion.div>
-
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400 mr-4">
-            <a href="#how-it-works" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-8 hover:underline decoration-2">Cara Kerja</a>
-            <a href="#pricing" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-8 hover:underline decoration-2">Harga</a>
-            <a href="#history" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-8 hover:underline decoration-2">Riwayat</a>
-          </div>
+          </Link>
+ 
+           {/* Desktop Nav */}
+           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400 mr-4">
+             <a href="/#how-it-works" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-8 hover:underline decoration-2">Cara Kerja</a>
+             <a href="/#pricing" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-8 hover:underline decoration-2">Harga</a>
+             <a href="/#history" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-8 hover:underline decoration-2">Riwayat</a>
+           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
             <button
@@ -193,11 +192,15 @@ export function Navbar() {
                     </AnimatePresence>
                   </div>
 
-                  {/* Profile Dropdown Simulation */}
+                  {/* Profile Link */}
                   <div className="flex items-center gap-2 pl-2">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-500/20 border-2 border-white dark:border-slate-800">
+                    <Link 
+                      href="/profile"
+                      className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-500/20 border-2 border-white dark:border-slate-800 hover:scale-110 transition-transform cursor-pointer"
+                      title="Lihat Profil"
+                    >
                       {user.email?.[0].toUpperCase()}
-                    </div>
+                    </Link>
                     <button 
                       onClick={handleSignOut}
                       className="p-2 text-slate-400 hover:text-red-500 transition-colors"

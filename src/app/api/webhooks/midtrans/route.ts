@@ -52,15 +52,32 @@ export async function POST(req: Request) {
         // Update profile
         const { data: profile } = await supabase
           .from('profiles')
-          .select('credits')
+          .select('credits, plan_name')
           .eq('id', userId)
           .single();
 
         if (profile) {
+          const planName = order_id.includes('PRO') ? 'Pro' : (order_id.includes('AGENCY') ? 'Agency' : 'Free');
+          
+          // 1. Update Profile Credits & Plan
           await supabase
             .from('profiles')
-            .update({ credits: (profile.credits || 0) + creditsToAdd })
+            .update({ 
+              credits: (profile.credits || 0) + creditsToAdd,
+              plan_name: planName
+            })
             .eq('id', userId);
+
+          // 2. Log Transaction
+          await supabase
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              order_id: order_id,
+              amount: parseInt(gross_amount),
+              plan_name: planName,
+              status: transaction_status
+            });
         }
       }
     }

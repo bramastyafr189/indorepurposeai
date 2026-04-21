@@ -320,6 +320,17 @@ export async function confirmPaymentSent(transactionId: string) {
 export async function cancelTransaction(transactionId: string) {
   const supabase = await createClient();
   try {
+    // 1. Check current status
+    const { data: tx } = await supabase
+      .from('transactions')
+      .select('status')
+      .eq('id', transactionId)
+      .single();
+
+    if (tx?.status !== 'pending') {
+      return { success: false, error: 'Transaksi tidak dapat dibatalkan karena sedang dalam proses verifikasi.' };
+    }
+
     const { error } = await supabase
       .from('transactions')
       .update({ status: 'cancelled' })

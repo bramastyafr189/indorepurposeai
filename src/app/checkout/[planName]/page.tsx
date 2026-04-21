@@ -403,13 +403,15 @@ export default function CheckoutPage() {
                       {confirming ? <Loader2 size={20} className="animate-spin" /> : <>Saya Sudah Transfer <CheckCircle2 size={20} /></>}
                     </button>
 
-                    <button 
-                      onClick={handleCancel}
-                      disabled={confirming}
-                      className="w-full py-4 text-slate-400 hover:text-red-500 font-black text-xs uppercase tracking-widest transition-all text-center"
-                    >
-                      Batalkan Pesanan
-                    </button>
+                    {transaction.status === 'pending' && (
+                      <button 
+                        onClick={handleCancel}
+                        disabled={confirming}
+                        className="w-full py-4 text-slate-400 hover:text-red-500 font-black text-xs uppercase tracking-widest transition-all text-center"
+                      >
+                        Batalkan Pesanan
+                      </button>
+                    )}
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-800 shadow-lg flex items-center gap-4">

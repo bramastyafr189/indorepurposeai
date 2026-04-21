@@ -287,19 +287,30 @@ export default function ProfilePage() {
                           </div>
 
                           <div className="flex flex-wrap gap-4">
-                            <Link 
-                              href={`/checkout/${profile.pendingTransaction.plan_name}`}
-                              className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-amber-500/25 flex items-center gap-2"
-                            >
-                              Selesaikan Pembayaran <ChevronRight size={18} />
-                            </Link>
-                            <button 
-                              onClick={() => handleCancelTx(profile.pendingTransaction.id)}
-                              disabled={cancelling}
-                              className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-500 hover:text-red-500 rounded-2xl font-black text-sm uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700"
-                            >
-                              {cancelling ? <Loader2 size={18} className="animate-spin" /> : 'Batalkan'}
-                            </button>
+                            {profile.pendingTransaction.status === 'pending' ? (
+                              <>
+                                <Link 
+                                  href={`/checkout/${profile.pendingTransaction.plan_name}`}
+                                  className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-amber-500/25 flex items-center gap-2"
+                                >
+                                  Selesaikan Pembayaran <ChevronRight size={18} />
+                                </Link>
+                                <button 
+                                  onClick={() => handleCancelTx(profile.pendingTransaction.id)}
+                                  disabled={cancelling}
+                                  className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-500 hover:text-red-500 rounded-2xl font-black text-sm uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700"
+                                >
+                                  {cancelling ? <Loader2 size={18} className="animate-spin" /> : 'Batalkan'}
+                                </button>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-3 px-6 py-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 rounded-2xl">
+                                <CheckCircle2 size={20} className="text-emerald-500 animate-pulse" />
+                                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                                  Bukti Transfer Sedang Diverifikasi Admin
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </motion.div>

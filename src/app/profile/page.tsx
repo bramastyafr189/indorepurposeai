@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Calendar, Zap, Shield, Sparkles, CreditCard, ArrowLeft, Loader2, CheckCircle2, Clock, ChevronRight } from 'lucide-react';
+import { User, Mail, Calendar, Zap, Shield, Sparkles, CreditCard, ArrowLeft, Loader2, CheckCircle2, Clock, ChevronRight, Check, X } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { getProfile, getTransactionHistory } from '../actions';
@@ -120,6 +120,13 @@ export default function ProfilePage() {
                   <PlanIcon size={14} />
                   Paket {profile?.plan_name || 'Free'}
                 </div>
+
+                {profile?.plan_name !== 'Free' && profile?.plan_expires_at && (
+                  <div className="mt-4 flex flex-col items-center gap-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Masa Aktif</span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Sampai {formatDate(profile.plan_expires_at)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none font-medium">
@@ -238,6 +245,18 @@ export default function ProfilePage() {
                         <span>Akses Penuh</span>
                         <CheckCircle2 size={14} />
                       </div>
+
+                      {profile?.plan_expires_at && (
+                        <div className="mt-8 pt-8 border-t border-white/10 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-blue-400">
+                            <Clock size={16} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Berakhir Pada</p>
+                            <p className="text-sm font-bold">{formatDate(profile.plan_expires_at)}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ) : (
@@ -257,25 +276,35 @@ export default function ProfilePage() {
                           <div className="flex items-center gap-5">
                             <div className={cn(
                               "w-12 h-12 rounded-xl flex items-center justify-center",
-                              tx.status === 'settlement' || tx.status === 'capture' 
-                                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500" 
-                                : "bg-amber-50 dark:bg-amber-500/10 text-amber-500"
+                              "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                              tx.status === 'success' ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500" :
+                              tx.status === 'failed' ? "bg-red-50 dark:bg-red-500/10 text-red-500" :
+                              "bg-amber-50 dark:bg-amber-500/10 text-amber-500"
                             )}>
-                              {tx.status === 'settlement' || tx.status === 'capture' ? <CheckCircle2 size={24} /> : <Clock size={24} />}
+                              {tx.status === 'success' ? <Check size={24} /> : 
+                               tx.status === 'failed' ? <X size={24} /> : 
+                               <Clock size={24} />}
                             </div>
                             <div>
-                              <p className="font-black text-slate-900 dark:text-white uppercase text-xs tracking-widest mb-1">
-                                Paket {tx.plan_name}
+                              <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Paket {tx.plan_name}</p>
+                              <p className="text-xs text-slate-500 font-medium">
+                                {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                               </p>
-                              <p className="text-sm font-bold text-slate-500">{formatDate(tx.created_at)}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-black text-slate-900 dark:text-white text-lg leading-none mb-1">
-                              {formatCurrency(tx.amount)}
+                            <p className="text-sm font-black text-slate-900 dark:text-white">
+                              Rp {(tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')}
                             </p>
-                            <p className="text-[10px] font-black uppercase tracking-tighter text-slate-400">
-                              {tx.order_id}
+                            <p className={cn(
+                              "text-[10px] font-black uppercase tracking-widest",
+                              tx.status === 'success' ? "text-emerald-500" :
+                              tx.status === 'failed' ? "text-red-500" :
+                              "text-amber-500"
+                            )}>
+                              {tx.status === 'success' ? 'Sukses' : 
+                               tx.status === 'failed' ? 'Gagal' : 
+                               tx.status === 'verifying' ? 'Proses Verifikasi' : 'Menunggu Chat'}
                             </p>
                           </div>
                         </div>

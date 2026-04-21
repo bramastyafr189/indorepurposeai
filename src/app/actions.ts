@@ -157,6 +157,28 @@ export async function getProfile() {
       .single();
 
     if (error) throw error;
+
+    // --- AUTO-DOWNGRADE LOGIC ---
+    if (profile.plan_name !== 'Free' && profile.plan_expires_at) {
+      const expiryDate = new Date(profile.plan_expires_at);
+      const now = new Date();
+
+      if (now > expiryDate) {
+        // Plan has expired! Reset to Free.
+        const { error: downgradeError } = await supabase
+          .from('profiles')
+          .update({ 
+            plan_name: 'Free',
+            credits: 0 // Reset credits upon expiry
+          })
+          .eq('id', user.id);
+
+        if (!downgradeError) {
+          profile.plan_name = 'Free';
+          profile.credits = 0;
+        }
+      }
+    }
     
     return { 
       success: true, 
@@ -185,6 +207,180 @@ export async function getTransactionHistory() {
 
     if (error) throw error;
     return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function initiateCheckout(planName: string, amount: number) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) return { success: false, error: 'Silakan login terlebih dahulu.' };
+
+  try {
+    // 1. Check if there's an existing 'pending' checkout for this user and plan
+    const { data: existing } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('plan_name', planName)
+      .eq('status', 'pending')
+      .single();
+
+    if (existing) return { success: true, data: existing };
+
+    // 2. Generate unique code (1-999)
+    const uniqueCode = Math.floor(Math.random() * 999) + 1;
+    const orderId = `MANUAL-${user.id.slice(0, 5)}-${Date.now()}`;
+
+    // 3. Create new pending transaction
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: user.id,
+        order_id: orderId,
+        amount: amount,
+        plan_name: planName,
+        status: 'pending',
+        unique_code: uniqueCode
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function confirmPaymentSent(transactionId: string) {
+  const supabase = await createClient();
+  try {
+    const { error } = await supabase
+      .from('transactions')
+      .update({ status: 'verifying' })
+      .eq('id', transactionId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// --- ADMIN ACTIONS ---
+
+const ADMIN_EMAILS = ['bramastyafr@gmail.com']; // GANTI DENGAN EMAIL ANDA
+
+export async function getVerifyingTransactions() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user || !ADMIN_EMAILS.includes(user.email || '')) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  try {
+    // Join with profiles to get user email for display
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        profiles (
+          email
+        )
+      `)
+      .eq('status', 'verifying')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function approveTransaction(transactionId: string) {
+  const supabase = await createClient();
+  const { data: { user: adminUser } } = await supabase.auth.getUser();
+  
+  if (!adminUser || !ADMIN_EMAILS.includes(adminUser.email || '')) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  try {
+    // 1. Get transaction details
+    const { data: tx, error: txError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .single();
+
+    if (txError || !tx) throw new Error('Transaksi tidak ditemukan');
+
+    // 2. Get user profile
+    const { data: profile, error: pError } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('id', tx.user_id)
+      .single();
+
+    if (pError || !profile) throw new Error('Profil user tidak ditemukan');
+
+    // 3. Determine credits
+    let creditsToAdd = 0;
+    if (tx.plan_name === 'Pro') creditsToAdd = 100;
+    else if (tx.plan_name === 'Agency') creditsToAdd = 500;
+    else creditsToAdd = 10; // Default
+
+    // 4. Calculate Expiry (30 Days from now)
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 30);
+
+    // 5. Atomic Updates (Credits, Status, & Expiry)
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ 
+        credits: (profile.credits || 0) + creditsToAdd,
+        plan_name: tx.plan_name,
+        plan_expires_at: expiryDate.toISOString()
+      })
+      .eq('id', tx.user_id);
+
+    if (updateError) throw updateError;
+
+    const { error: statusError } = await supabase
+      .from('transactions')
+      .update({ status: 'success' })
+      .eq('id', transactionId);
+
+    if (statusError) throw statusError;
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Approve Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function rejectTransaction(transactionId: string) {
+  const supabase = await createClient();
+  const { data: { user: adminUser } } = await supabase.auth.getUser();
+  
+  if (!adminUser || !ADMIN_EMAILS.includes(adminUser.email || '')) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('transactions')
+      .update({ status: 'failed' })
+      .eq('id', transactionId);
+
+    if (error) throw error;
+    return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

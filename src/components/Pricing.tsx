@@ -1,10 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, Sparkles, Shield, HelpCircle } from 'lucide-react';
+import { Check, Sparkles, Shield, HelpCircle, X, MessageSquare, Smartphone, Wallet } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { createTransaction } from '@/app/paymentActions';
 import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
+import { initiateCheckout } from '@/app/actions';
 
 const plans = [
   {
@@ -57,40 +60,38 @@ const plans = [
 ];
 
 export function Pricing() {
+  const [user, setUser] = useState<any>(null);
+  const supabase = createClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+  }, []);
+
   const handlePurchase = async (plan: any) => {
     if (plan.price === '0') {
       toast.info('Paket Free sudah aktif di akun Anda.');
       return;
     }
-
-    const priceNum = parseInt(plan.price.replace(/\./g, ''));
-    toast.loading('Menyiapkan pembayaran...');
     
-    const res = await createTransaction(plan.name, priceNum);
+    if (!user) {
+      toast.error('Silakan login terlebih dahulu untuk melakukan pembelian.');
+      return;
+    }
+
+    toast.loading('Menyiapkan halaman pembayaran...');
+    const priceNum = parseInt(plan.price.replace(/\./g, ''));
+    
+    const res = await initiateCheckout(plan.name, priceNum);
     
     toast.dismiss();
 
-    if (res.success && res.token) {
-      // @ts-ignore
-      window.snap.pay(res.token, {
-        onSuccess: (result: any) => {
-          toast.success('Pembayaran Berhasil! Kredit Anda akan segera bertambah.');
-          console.log('Success:', result);
-        },
-        onPending: (result: any) => {
-          toast.info('Menunggu pembayaran Anda.');
-          console.log('Pending:', result);
-        },
-        onError: (result: any) => {
-          toast.error('Pembayaran Gagal. Silakan coba lagi.');
-          console.error('Error:', result);
-        },
-        onClose: () => {
-          toast.info('Pembayaran dibatalkan.');
-        }
-      });
+    if (res.success) {
+      router.push(`/checkout/${plan.name}`);
     } else {
-      toast.error(res.error || 'Gagal memulai pembayaran.');
+      toast.error(res.error || 'Gagal menyiapkan pembayaran.');
     }
   };
 

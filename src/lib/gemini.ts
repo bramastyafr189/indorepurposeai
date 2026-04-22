@@ -5,23 +5,37 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 // Helper function to wait
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-const PRIMARY_MODEL = "gemini-3.1-flash-lite-preview";
-const SECONDARY_MODEL = "gemini-2.5-flash";
-const TERTIARY_MODEL = "gemini-2.5-flash-lite";
+import { createAdminClient } from "@/utils/supabase/admin";
+
+async function getOrderedModels() {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('ai_models')
+    .select('model_name')
+    .eq('is_active', true)
+    .order('priority', { ascending: true });
+  
+  if (error) {
+    console.error('Database error fetching AI models:', error);
+    throw new Error('Gagal mengambil konfigurasi AI dari database.');
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error('Tidak ada model AI aktif yang ditemukan di database.');
+  }
+
+  return data.map(m => m.model_name);
+}
 
 async function generateWithRetry(prompt: string, tone: string, maxRetries = 5) {
   let lastError: any;
+  const models = await getOrderedModels();
   
   for (let i = 0; i < maxRetries; i++) {
     try {
-      let modelName;
-      if (i < 3) {
-        modelName = PRIMARY_MODEL; // Attempt 1, 2, 3
-      } else if (i === 3) {
-        modelName = SECONDARY_MODEL; // Attempt 4
-      } else {
-        modelName = TERTIARY_MODEL; // Attempt 5 (Final)
-      }
+      // Pick model based on attempt number
+      // If we have more retries than models, stay on the last model
+      const modelName = models[i] || models[models.length - 1];
       
       const model = genAI.getGenerativeModel({ 
         model: modelName,

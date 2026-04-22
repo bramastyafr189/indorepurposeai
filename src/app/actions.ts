@@ -610,3 +610,18 @@ export async function getAllHistoryAdmin() {
     return { success: false, error: error.message };
   }
 }
+
+export async function updateTransactionProof(transactionId: string, proofUrl: string) {
+  const supabase = await createClient();
+  try {
+    const { error } = await supabase
+      .from('transactions')
+      .update({ proof_url: proofUrl })
+      .eq('id', transactionId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

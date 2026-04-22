@@ -24,7 +24,8 @@ import {
   History as HistoryIcon,
   Eye,
   MessageCircle,
-  FileText
+  FileText,
+  Check
 } from 'lucide-react';
 import { 
   Twitter as TwitterIcon, 
@@ -688,14 +689,28 @@ function VerifikasiCard({ tx, onApprove, onReject, processingId }: any) {
       className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/20 flex flex-col md:flex-row items-center justify-between gap-8 group hover:border-blue-500/30 transition-all"
     >
       <div className="flex flex-col md:flex-row items-center gap-8 w-full md:w-auto text-center md:text-left">
-        <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shrink-0">
-          <CreditCard size={32} />
+        <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shrink-0 overflow-hidden">
+          {tx.proof_url ? (
+            <a href={tx.proof_url} target="_blank" rel="noopener noreferrer" className="w-full h-full group/proof relative">
+              <img src={tx.proof_url} alt="Proof" className="w-full h-full object-cover transition-transform group-hover/proof:scale-110" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/proof:opacity-100 flex items-center justify-center transition-opacity">
+                <Eye size={16} className="text-white" />
+              </div>
+            </a>
+          ) : (
+            <CreditCard size={32} />
+          )}
         </div>
         
         <div className="space-y-1 min-w-0">
           <div className="flex items-center justify-center md:justify-start gap-2">
             <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600">Verification Pending</span>
             <span className="text-xs font-bold text-slate-400">Order ID: {tx.order_id}</span>
+            {tx.proof_url && (
+              <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center gap-1">
+                <Check size={8} /> Bukti Tersedia
+              </span>
+            )}
           </div>
           <h3 className="text-2xl font-black text-slate-900 dark:text-white truncate">
             Rp {(tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')}

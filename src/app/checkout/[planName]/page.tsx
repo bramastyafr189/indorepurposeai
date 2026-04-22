@@ -17,14 +17,23 @@ import {
   ChevronRight,
   Banknote,
   Check,
-  Clock
+  Clock,
+  Upload,
+  Image as ImageIcon,
+  Headphones
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
-import { initiateCheckout, confirmPaymentSent, cancelTransaction, getProfile } from '@/app/actions';
+import { 
+  initiateCheckout, 
+  confirmPaymentSent, 
+  cancelTransaction, 
+  getProfile,
+  updateTransactionProof 
+} from '@/app/actions';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -51,6 +60,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showWAHelp, setShowWAHelp] = useState(false);
+  const [uploadingProof, setUploadingProof] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -74,6 +85,21 @@ export default function CheckoutPage() {
       }, 1000);
       
       return () => clearInterval(timer);
+    }
+
+    // Check if 1 hour has passed for WA help button
+    if (transaction && transaction.status === 'verifying') {
+      const checkWA = () => {
+        const hourInMs = 60 * 60 * 1000;
+        const now = new Date().getTime();
+        const created = new Date(transaction.created_at).getTime();
+        if (now - created > hourInMs) {
+          setShowWAHelp(true);
+        }
+      };
+      checkWA();
+      const interval = setInterval(checkWA, 60000); // Check every minute
+      return () => clearInterval(interval);
     }
   }, [step, transaction]);
 
@@ -132,18 +158,60 @@ export default function CheckoutPage() {
     setConfirming(true);
     const res = await confirmPaymentSent(transaction.id);
     if (res.success) {
-      toast.success('Konfirmasi berhasil! Mengarahkan ke WhatsApp...');
-      
-      const phoneNumber = "628123456789"; // GANTI DENGAN NOMOR ANDA
-      const totalAmountWithCode = (transaction.amount + (transaction.unique_code || 0)).toLocaleString('id-ID');
-      const message = `Halo Admin IndoRepurpose AI, saya telah melakukan transfer untuk paket *${transaction.plan_name}* via *${activeMethod?.name}*.%0A%0AEmail: ${transaction.user_email || 'User'}%0AID Transaksi: ${transaction.order_id}%0ANominal: *Rp ${totalAmountWithCode}*%0A%0A[Lampirkan Bukti Transfer]`;
-      
-      window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+      toast.success('Konfirmasi berhasil!');
       router.push('/profile');
     } else {
       toast.error('Gagal melakukan konfirmasi.');
     }
     setConfirming(false);
+  };
+
+  const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 5MB');
+      return;
+    }
+
+    setUploadingProof(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${transaction.order_id}-${Math.random()}.${fileExt}`;
+      const filePath = `proofs/${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('payment-proofs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('payment-proofs')
+        .getPublicUrl(filePath);
+
+      const res = await updateTransactionProof(transaction.id, publicUrl);
+      if (res.success) {
+        toast.success('Bukti transfer berhasil diunggah!');
+        setTransaction({ ...transaction, proof_url: publicUrl });
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (error: any) {
+      console.error('Upload Error:', error);
+      toast.error('Gagal mengunggah bukti: ' + error.message);
+    } finally {
+      setUploadingProof(false);
+    }
+  };
+
+  const openWhatsApp = () => {
+    const phoneNumber = "628123456789"; // GANTI DENGAN NOMOR ANDA
+    const totalAmountWithCode = (transaction.amount + (transaction.unique_code || 0)).toLocaleString('id-ID');
+    const message = `Halo Admin IndoRepurpose AI, saya ingin menanyakan status verifikasi paket *${transaction.plan_name}* saya.%0A%0AEmail: ${transaction.user_email || 'User'}%0AID Transaksi: ${transaction.order_id}%0ANominal: *Rp ${totalAmountWithCode}*`;
+    
+    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
   };
 
   const handleCancel = async () => {
@@ -395,13 +463,76 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    <button 
-                      onClick={handleConfirmSent}
-                      disabled={confirming}
-                      className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95"
-                    >
-                      {confirming ? <Loader2 size={20} className="animate-spin" /> : <>Saya Sudah Transfer <CheckCircle2 size={20} /></>}
-                    </button>
+                    {transaction.status === 'pending' ? (
+                      <button 
+                        onClick={handleConfirmSent}
+                        disabled={confirming}
+                        className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95"
+                      >
+                        {confirming ? <Loader2 size={20} className="animate-spin" /> : <>Saya Sudah Transfer <CheckCircle2 size={20} /></>}
+                      </button>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800 text-center">
+                          <Loader2 size={32} className="mx-auto text-blue-600 animate-spin mb-4" />
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase mb-2">Menunggu Verifikasi</h4>
+                          <p className="text-xs text-slate-500 font-medium leading-relaxed">Admin sedang mengecek transferan Anda. Proses ini biasanya memakan waktu 5-15 menit.</p>
+                        </div>
+
+                        {/* Optional Upload Section */}
+                        <div className="space-y-3">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Upload Bukti Transfer (Opsional)</p>
+                          {transaction.proof_url ? (
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 overflow-hidden shrink-0">
+                                <img src={transaction.proof_url} alt="Proof" className="w-full h-full object-cover" />
+                              </div>
+                              <div className="flex-1 overflow-hidden">
+                                <p className="text-[10px] font-black text-emerald-600 uppercase truncate">Bukti Terunggah</p>
+                                <p className="text-[8px] text-emerald-500 font-bold truncate">Akan mempercepat verifikasi admin</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleUploadProof}
+                                disabled={uploadingProof}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                              />
+                              <div className="py-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                {uploadingProof ? (
+                                  <Loader2 size={24} className="animate-spin text-blue-600" />
+                                ) : (
+                                  <>
+                                    <Upload size={24} className="text-slate-400" />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Pilih Foto Bukti</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* WhatsApp Support - Only visible after 1 hour */}
+                        {showWAHelp && (
+                          <button 
+                            onClick={openWhatsApp}
+                            className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2"
+                          >
+                            <MessageSquare size={16} /> Hubungi Admin via WA
+                          </button>
+                        )}
+                        
+                        <Link 
+                          href="/profile"
+                          className="block w-full py-4 text-slate-400 hover:text-slate-900 dark:hover:text-white font-black text-xs uppercase tracking-widest text-center"
+                        >
+                          Cek Riwayat Transaksi
+                        </Link>
+                      </div>
+                    )}
 
                     {transaction.status === 'pending' && (
                       <button 

@@ -63,6 +63,15 @@ export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Payment Method Mapping for Admin Display
+  const PAYMENT_METHODS: Record<string, { name: string, logo: string }> = {
+    'jago': { name: 'Bank Jago', logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Jago.png' },
+    'seabank': { name: 'SeaBank', logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/SeaBank.png' },
+    'gopay': { name: 'GoPay', logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Gopay.png' },
+    'shopeepay': { name: 'ShopeePay', logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Shopee%20Pay.png' },
+    'blu': { name: 'blu by BCA Digital', logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Blu%20BCA.png' }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -351,6 +360,7 @@ export default function AdminDashboard() {
                             processingId={processingId}
                             onApprove={handleApprove}
                             onReject={handleReject}
+                            methodInfo={PAYMENT_METHODS[tx.payment_method]}
                           />
                         ))}
                       </div>
@@ -374,6 +384,7 @@ export default function AdminDashboard() {
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">ID Order</th>
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Pengguna</th>
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Plan</th>
+                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Metode</th>
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</th>
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Tanggal</th>
@@ -402,6 +413,16 @@ export default function AdminDashboard() {
                                 )}>
                                   {tx.plan_name}
                                 </span>
+                              </td>
+                              <td className="px-8 py-5">
+                                {tx.payment_method && PAYMENT_METHODS[tx.payment_method] ? (
+                                  <div className="flex items-center gap-2">
+                                    <img src={PAYMENT_METHODS[tx.payment_method].logo} alt="" className="w-4 h-4 object-contain" />
+                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{PAYMENT_METHODS[tx.payment_method].name}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 italic">Manual/Lama</span>
+                                )}
                               </td>
                               <td className="px-8 py-5 text-sm font-black text-slate-900 dark:text-white">
                                 Rp {(tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')}
@@ -681,7 +702,7 @@ function StatsCard({ title, value, icon, color, trend, isActive }: any) {
   );
 }
 
-function VerifikasiCard({ tx, onApprove, onReject, processingId }: any) {
+function VerifikasiCard({ tx, onApprove, onReject, processingId, methodInfo }: any) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
@@ -725,6 +746,14 @@ function VerifikasiCard({ tx, onApprove, onReject, processingId }: any) {
               {new Date(tx.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
+          {methodInfo && (
+            <div className="mt-2 flex items-center justify-center md:justify-start gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-800 w-fit mx-auto md:mx-0">
+              <img src={methodInfo.logo} alt="" className="w-5 h-5 object-contain" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                via {methodInfo.name}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -34,6 +34,7 @@ import {
   getProfile,
   updateTransactionProof 
 } from '@/app/actions';
+
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -45,10 +46,51 @@ const PLANS = {
 } as const;
 
 const METHODS = [
-  { id: 'bca', name: 'Bank BCA', type: 'bank', icon: Banknote, color: 'blue', account: '1234 - 5678 - 90', holder: 'A.N. [NAMA ANDA]' },
-  { id: 'mandiri', name: 'Bank Mandiri', type: 'bank', icon: Banknote, color: 'amber', account: '9876 - 5432 - 10', holder: 'A.N. [NAMA ANDA]' },
-  { id: 'gopay', name: 'GoPay', type: 'wallet', icon: Wallet, color: 'emerald', account: '0812 - 3456 - 7890', holder: 'A.N. [NAMA ANDA]' },
-  { id: 'shopeepay', name: 'ShopeePay', type: 'wallet', icon: Smartphone, color: 'orange', account: '0812 - 3456 - 7890', holder: 'A.N. [NAMA ANDA]' },
+  { 
+    id: 'gopay', 
+    name: 'GoPay', 
+    type: 'wallet', 
+    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Gopay.png',
+    color: 'bg-blue-50', 
+    account: '085728123219', 
+    holder: 'BRAMASTYA FADHIL RINANTO' 
+  },
+  { 
+    id: 'shopeepay', 
+    name: 'ShopeePay', 
+    type: 'wallet', 
+    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Shopee%20Pay.png',
+    color: 'bg-orange-50', 
+    account: '085728123219', 
+    holder: 'BRAMASTYA FADHIL RINANTO' 
+  },
+  { 
+    id: 'blu', 
+    name: 'blu by BCA Digital', 
+    type: 'bank', 
+    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Blu%20BCA.png',
+    color: 'bg-blue-50', 
+    account: '005804673319', 
+    holder: 'BRAMASTYA FADHIL RINANTO' 
+  },
+  { 
+    id: 'jago', 
+    name: 'Bank Jago', 
+    type: 'bank', 
+    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Jago.png',
+    color: 'bg-orange-50', 
+    account: '502328067481', 
+    holder: 'BRAMASTYA FADHIL RINANTO' 
+  },
+  { 
+    id: 'seabank', 
+    name: 'SeaBank', 
+    type: 'bank', 
+    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/SeaBank.png',
+    color: 'bg-orange-50', 
+    account: '901655806340', 
+    holder: 'BRAMASTYA FADHIL RINANTO' 
+  },
 ];
 
 export default function CheckoutPage() {
@@ -290,13 +332,13 @@ export default function CheckoutPage() {
                         </div>
                       )}
                       
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110",
-                        m.color === 'blue' ? "bg-blue-50 text-blue-600" :
-                        m.color === 'amber' ? "bg-amber-50 text-amber-600" :
-                        m.color === 'emerald' ? "bg-emerald-50 text-emerald-600" : "bg-orange-50 text-orange-600"
-                      )}>
-                        <m.icon size={24} />
+                      <div className="w-20 h-12 flex items-center justify-start mb-6 transition-transform group-hover:scale-105">
+                        <img 
+                          src={m.logo} 
+                          alt={m.name} 
+                          className="h-full w-auto object-contain object-left" 
+                          referrerPolicy="no-referrer"
+                        />
                       </div>
                       
                       <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">{m.name}</h3>
@@ -423,8 +465,13 @@ export default function CheckoutPage() {
                   {/* Target Account Card */}
                   <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-6">
-                      <div className="w-16 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white shrink-0">
-                        {activeMethod && <activeMethod.icon size={24} />}
+                      <div className="w-24 h-14 flex items-center justify-center shrink-0">
+                        <img 
+                          src={activeMethod?.logo} 
+                          alt={activeMethod?.name} 
+                          className="w-full h-full object-contain" 
+                          referrerPolicy="no-referrer"
+                        />
                       </div>
                       <div>
                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{activeMethod?.name}</p>

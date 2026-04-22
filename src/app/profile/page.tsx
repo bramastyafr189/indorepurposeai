@@ -683,22 +683,36 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 border border-blue-100 dark:border-blue-900/20">
-                   {selectedTx.payment_method && (
-                     <>
-                      <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        {(() => {
-                          const Icon = getMethodIcon(selectedTx.payment_method);
-                          return <Icon size={16} />;
-                        })()}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 leading-none mb-1">Metode Pembayaran</p>
-                        <p className="text-xs font-black uppercase">{selectedTx.payment_method}</p>
-                      </div>
-                     </>
-                   )}
-                </div>
+                 <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 border border-blue-100 dark:border-blue-900/20">
+                    {selectedTx.payment_method && (
+                      <>
+                       <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm p-1.5">
+                         {(() => {
+                           const PAYMENT_LOGOS: Record<string, string> = {
+                             'jago': 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Jago.png',
+                             'seabank': 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/SeaBank.png',
+                             'gopay': 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Gopay.png',
+                             'shopeepay': 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Shopee%20Pay.png',
+                             'blu': 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Blu%20BCA.png'
+                           };
+                           const logoUrl = PAYMENT_LOGOS[selectedTx.payment_method.toLowerCase()];
+                           if (logoUrl) return <img src={logoUrl} alt="" className="w-full h-full object-contain" />;
+                           const Icon = getMethodIcon(selectedTx.payment_method);
+                           return <Icon size={20} />;
+                         })()}
+                       </div>
+                       <div className="flex-1">
+                         <p className="text-[10px] font-black uppercase tracking-widest opacity-60 leading-none mb-1">Metode Pembayaran</p>
+                         <p className="text-xs font-black uppercase">
+                            {(() => {
+                              const NAMES: Record<string, string> = { 'jago': 'Bank Jago', 'seabank': 'SeaBank', 'gopay': 'GoPay', 'shopeepay': 'ShopeePay', 'blu': 'blu by BCA Digital' };
+                              return NAMES[selectedTx.payment_method.toLowerCase()] || selectedTx.payment_method;
+                            })()}
+                         </p>
+                       </div>
+                      </>
+                    )}
+                 </div>
 
                 <div className="text-center print:hidden">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">

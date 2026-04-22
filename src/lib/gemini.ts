@@ -45,10 +45,13 @@ async function generateWithRetry(prompt: string, tone: string, maxRetries = 5) {
             type: SchemaType.OBJECT,
             properties: {
               x: { type: SchemaType.STRING },
-              whatsapp: { type: SchemaType.STRING },
-              linkedin: { type: SchemaType.STRING }
+              linkedin: { type: SchemaType.STRING },
+              instagram: { type: SchemaType.STRING },
+              tiktok: { type: SchemaType.STRING },
+              newsletter: { type: SchemaType.STRING },
+              threads: { type: SchemaType.STRING }
             },
-            required: ["x", "whatsapp", "linkedin"]
+            required: ["x", "linkedin", "instagram", "tiktok", "newsletter", "threads"]
           }
         }
       } as any);
@@ -76,31 +79,35 @@ async function generateWithRetry(prompt: string, tone: string, maxRetries = 5) {
 
 export const repurposeAllContent = async (content: string, tone: string = "professional") => {
   const toneInstructions: Record<string, string> = {
-    professional: "Gunakan gaya bahasa Profesional: Baku, edukatif, berwibawa, dan sangat terstruktur.",
-    casual: "Gunakan gaya bahasa Santai: Seperti mengobrol dengan teman, gunakan istilah semi-formal, hangat, dan mudah dimengerti.",
-    inspirational: "Gunakan gaya bahasa Inspiratif: Penuh motivasi, berenergi, gunakan teknik storytelling yang menyentuh emosi.",
-    witty: "Gunakan gaya bahasa Witty/Lucu: Cerdas, penuh humor, gunakan perumpamaan yang unik (pun), dan sedikit sarkasme yang sopan.",
-    genz: "Gunakan gaya bahasa Gen-Z: Ekspresif, gunakan istilah tren masa kini, banyak emoji, singkat, dan berenergi tinggi."
+    professional: "Gunakan gaya bahasa Profesional: Formal, berbasis data, objektif, dan menggunakan terminologi industri yang tepat.",
+    casual: "Gunakan gaya bahasa Santai: Akrab, sapaan hangat (seperti 'Halo teman-teman'), dan bahasa percakapan yang mengalir.",
+    inspirational: "Gunakan gaya bahasa Inspiratif: Menggugah semangat, penuh metafora, dan fokus pada transformasi positif.",
+    witty: "Gunakan gaya bahasa Witty/Humoris: Cerdas, menggunakan analogi lucu tak terduga, dan sedikit sarkasme sopan.",
+    genz: "Gunakan gaya bahasa Gen-Z: Ekspresif, gunakan slang Indo (Slay, POV, Jujurly), banyak emoji, dan berenergi tinggi.",
+    persuasive: "Gunakan gaya bahasa Persuasif (Marketing): Gunakan teknik copywriting (seperti AIDA atau PAS), fokus pada solusi/manfaat, sangat meyakinkan, dan memiliki Call to Action (CTA) yang kuat untuk konversi."
   };
 
   const selectedTone = toneInstructions[tone] || toneInstructions.professional;
 
-  const prompt = `Analisis konten berikut dan hasilkan 3 variasi postingan media sosial dalam Bahasa Indonesia:
+  const prompt = `Analisis konten berikut dan hasilkan 6 format konten media sosial yang berbeda dalam Bahasa Indonesia:
     
-    PENTING: ${selectedTone}
+    INSTRUKSI GAYA BAHASA: ${selectedTone}
 
-    1. X (Twitter) Thread: Maksimal 5 tweet, ada hook pembuka yang kuat sesuai gaya bahasa di atas.
-    2. Pesan WhatsApp: Singkat, padat, gunakan poin-poin/bullet, tambahkan emoji, fokus pada manfaat.
-    3. Postingan LinkedIn: Profesional, inspiratif, gunakan struktur Hook -> Pembahasan -> Key Takeaway -> CTA.
+    1. X (Twitter) Thread: Buatlah rangkaian 3-5 tweet yang saling bersambung dengan hook menarik dan penomoran.
+    2. Postingan LinkedIn: Profesional, edukatif, gunakan struktur Hook -> Pembahasan -> Key Takeaway -> CTA.
+    3. Instagram: Caption estetik, 3 ide visual detail, dan 10 hashtag relevan.
+    4. TikTok Viral Script & Ideas: Hook 3 detik, Skrip Video (narasi/POV), dan 3 ide konten trending.
+    5. Newsletter: Ringkasan curated eksklusif (300-500 karakter) dengan subjudul menarik.
+    6. Threads: Santai, interaktif, dan berbentuk cerita pendek yang memancing balasan.
     
     Konten: ${content}
 
-    Kembalikan hasil dalam format JSON.`;
+    Kembalikan hasil dalam format JSON dengan kunci: x, linkedin, instagram, tiktok, newsletter, threads.`;
 
   return await generateWithRetry(prompt, tone);
 };
 
-export const repurposeContent = async (content: string, platform: 'x' | 'whatsapp' | 'linkedin', tone: string = "professional") => {
+export const repurposeContent = async (content: string, platform: 'x' | 'linkedin' | 'instagram' | 'tiktok' | 'newsletter' | 'threads', tone: string = "professional") => {
   const results = await repurposeAllContent(content, tone);
   return results[platform];
 };

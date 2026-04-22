@@ -34,6 +34,7 @@ import {
   getProfile,
   updateTransactionProof 
 } from '@/app/actions';
+import { BUSINESS_CONFIG, openWhatsAppSupport } from '@/lib/config';
 
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -45,53 +46,7 @@ const PLANS = {
   'Agency': { price: 749000, color: 'indigo' }
 } as const;
 
-const METHODS = [
-  { 
-    id: 'gopay', 
-    name: 'GoPay', 
-    type: 'wallet', 
-    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Gopay.png',
-    color: 'bg-blue-50', 
-    account: '085728123219', 
-    holder: 'BRAMASTYA FADHIL RINANTO' 
-  },
-  { 
-    id: 'shopeepay', 
-    name: 'ShopeePay', 
-    type: 'wallet', 
-    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Payment%20Channel/E-Wallet/Shopee%20Pay.png',
-    color: 'bg-orange-50', 
-    account: '085728123219', 
-    holder: 'BRAMASTYA FADHIL RINANTO' 
-  },
-  { 
-    id: 'blu', 
-    name: 'blu by BCA Digital', 
-    type: 'bank', 
-    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Blu%20BCA.png',
-    color: 'bg-blue-50', 
-    account: '005804673319', 
-    holder: 'BRAMASTYA FADHIL RINANTO' 
-  },
-  { 
-    id: 'jago', 
-    name: 'Bank Jago', 
-    type: 'bank', 
-    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Jago.png',
-    color: 'bg-orange-50', 
-    account: '502328067481', 
-    holder: 'BRAMASTYA FADHIL RINANTO' 
-  },
-  { 
-    id: 'seabank', 
-    name: 'SeaBank', 
-    type: 'bank', 
-    logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/SeaBank.png',
-    color: 'bg-orange-50', 
-    account: '901655806340', 
-    holder: 'BRAMASTYA FADHIL RINANTO' 
-  },
-];
+const METHODS = BUSINESS_CONFIG.payment.methods;
 
 export default function CheckoutPage() {
   const params = useParams();
@@ -249,11 +204,12 @@ export default function CheckoutPage() {
   };
 
   const openWhatsApp = () => {
-    const phoneNumber = "628123456789"; // GANTI DENGAN NOMOR ANDA
-    const totalAmountWithCode = (transaction.amount + (transaction.unique_code || 0)).toLocaleString('id-ID');
-    const message = `Halo Admin IndoRepurpose AI, saya ingin menanyakan status verifikasi paket *${transaction.plan_name}* saya.%0A%0AEmail: ${transaction.user_email || 'User'}%0AID Transaksi: ${transaction.order_id}%0ANominal: *Rp ${totalAmountWithCode}*`;
-    
-    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+    openWhatsAppSupport({
+      plan: transaction.plan_name,
+      email: transaction.user_email || 'User',
+      orderId: transaction.order_id,
+      amount: (transaction.amount + (transaction.unique_code || 0)).toLocaleString('id-ID')
+    });
   };
 
   const handleCancel = async () => {

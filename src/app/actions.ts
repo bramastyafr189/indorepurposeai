@@ -71,8 +71,11 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
           mode, 
           tone,
           result_x: results.x, 
-          result_whatsapp: results.whatsapp, 
-          result_linkedin: results.linkedin 
+          result_linkedin: results.linkedin,
+          result_instagram: results.instagram,
+          result_tiktok: results.tiktok,
+          result_newsletter: results.newsletter,
+          result_threads: results.threads
         }
       ]);
 
@@ -118,8 +121,11 @@ export async function getHistory() {
         tone: item.tone || 'professional',
         results: {
           x: item.result_x,
-          whatsapp: item.result_whatsapp,
-          linkedin: item.result_linkedin
+          linkedin: item.result_linkedin,
+          instagram: item.result_instagram,
+          tiktok: item.result_tiktok,
+          newsletter: item.result_newsletter,
+          threads: item.result_threads
         }
       }))
     };

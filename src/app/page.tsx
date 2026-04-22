@@ -6,7 +6,7 @@ import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, 
 import { processContent, getHistory, deleteHistory } from './actions';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Youtube as YoutubeIcon, Twitter as TwitterIcon, Linkedin as LinkedinIcon } from '@/components/Icons';
+import { Youtube as YoutubeIcon, Twitter as TwitterIcon, Linkedin as LinkedinIcon, Instagram as InstagramIcon, Mail as MailIcon, Tiktok as TiktokIcon, Threads as ThreadsIcon } from '@/components/Icons';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { HowItWorks } from '@/components/HowItWorks';
@@ -24,8 +24,11 @@ interface HistoryItem {
   tone: string;
   results: {
     x: string;
-    whatsapp: string;
     linkedin: string;
+    instagram: string;
+    tiktok: string;
+    newsletter: string;
+    threads: string;
   };
 }
 
@@ -34,7 +37,7 @@ export default function Home() {
   const [mode, setMode] = useState<'url' | 'text'>('url');
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [results, setResults] = useState<{ x: string, whatsapp: string, linkedin: string } | null>(null);
+  const [results, setResults] = useState<{ x: string, linkedin: string, instagram: string, tiktok: string, newsletter: string, threads: string } | null>(null);
   const [error, setError] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [tone, setTone] = useState<string>('professional');
@@ -236,6 +239,7 @@ export default function Home() {
                     { id: 'inspirational', label: 'Inspiratif', icon: '✨' },
                     { id: 'witty', label: 'Witty', icon: '🧠' },
                     { id: 'genz', label: 'Gen-Z', icon: '🚀' },
+                    { id: 'persuasive', label: 'Persuasif', icon: '🎯' },
                   ].map((t) => (
                     <button
                       key={t.id}
@@ -319,7 +323,7 @@ export default function Home() {
                     </p>
                   </motion.div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
                     <ResultCard 
                       index={0}
                       title="Postingan X" 
@@ -329,17 +333,38 @@ export default function Home() {
                     />
                     <ResultCard 
                       index={1}
-                      title="Pesan WhatsApp" 
-                      icon={<MessageSquare className="text-emerald-500" />} 
-                      content={results.whatsapp} 
-                      onCopy={() => copyToClipboard(results.whatsapp, "Pesan WhatsApp")}
-                    />
-                    <ResultCard 
-                      index={2}
-                      title="Artikel LinkedIn" 
+                      title="Postingan LinkedIn" 
                       icon={<LinkedinIcon className="text-blue-700" />} 
                       content={results.linkedin} 
                       onCopy={() => copyToClipboard(results.linkedin, "Postingan LinkedIn")}
+                    />
+                    <ResultCard 
+                      index={2}
+                      title="Postingan Threads" 
+                      icon={<ThreadsIcon className="text-slate-900 dark:text-white" />} 
+                      content={results.threads} 
+                      onCopy={() => copyToClipboard(results.threads, "Postingan Threads")}
+                    />
+                    <ResultCard 
+                      index={3}
+                      title="Instagram Feed/Reels" 
+                      icon={<InstagramIcon className="text-pink-600" />} 
+                      content={results.instagram} 
+                      onCopy={() => copyToClipboard(results.instagram, "Caption Instagram")}
+                    />
+                    <ResultCard 
+                      index={4}
+                      title="TikTok Viral Script" 
+                      icon={<TiktokIcon className="text-slate-900 dark:text-white" />} 
+                      content={results.tiktok} 
+                      onCopy={() => copyToClipboard(results.tiktok, "Skrip TikTok")}
+                    />
+                    <ResultCard 
+                      index={5}
+                      title="Newsletter" 
+                      icon={<MailIcon className="text-amber-500" />} 
+                      content={results.newsletter} 
+                      onCopy={() => copyToClipboard(results.newsletter, "Ringkasan Newsletter")}
                     />
                   </div>
                 </div>

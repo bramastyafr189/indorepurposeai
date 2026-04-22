@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { BUSINESS_CONFIG, openWhatsAppSupport } from '@/lib/config';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -175,12 +176,13 @@ export default function ProfilePage() {
 
   const openWhatsApp = () => {
     if (!profile?.pendingTransaction) return;
-    const phoneNumber = "628123456789";
     const tx = profile.pendingTransaction;
-    const totalAmountWithCode = (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID');
-    const message = `Halo Admin IndoRepurpose AI, saya ingin menanyakan status verifikasi paket *${tx.plan_name}* saya.%0A%0AEmail: ${profile.email || 'User'}%0AID Transaksi: ${tx.order_id}%0ANominal: *Rp ${totalAmountWithCode}*`;
-    
-    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+    openWhatsAppSupport({
+      plan: tx.plan_name,
+      email: profile.email || 'User',
+      orderId: tx.order_id,
+      amount: (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')
+    });
   };
 
   const handlePrint = () => {

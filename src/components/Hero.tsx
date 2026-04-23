@@ -42,9 +42,15 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 1.2 }}
-            className="mx-auto mb-14 max-w-2xl text-base md:text-lg lg:text-xl text-slate-700 dark:text-slate-300 leading-relaxed font-sans font-medium px-4 md:px-0"
+            className="mx-auto mb-14 max-w-2xl text-base md:text-lg lg:text-xl text-slate-500 dark:text-slate-400 leading-relaxed font-sans px-4 md:px-0"
           >
-            Platform AI all-in-one untuk kreator Indonesia. Ubah YouTube menjadi konten viral dalam sekejap.
+            Platform AI all-in-one untuk <span className="text-slate-900 dark:text-slate-200 font-semibold">kreator Indonesia</span>. 
+            Ubah YouTube atau artikel menjadi konten <span className="text-indigo-600 dark:text-indigo-400 font-bold">viral</span> untuk 
+            <span className="relative inline-block mx-1 text-slate-900 dark:text-slate-200 font-bold group">
+              6 platform
+              <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-indigo-500/30 dark:bg-indigo-400/30" />
+            </span> 
+            sosial media dalam sekejap.
           </motion.p>
           
           <motion.div 

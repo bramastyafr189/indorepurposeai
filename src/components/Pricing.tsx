@@ -16,7 +16,7 @@ const plans = [
     description: 'Untuk mencoba keajaiban AI kami.',
     features: [
       '2 Kredit / Bulan',
-      '3 Platform (X, WA, LinkedIn)',
+      'Semua Platform Sosial',
       'Basic AI Engine',
       'Arsip Proyek Publik',
     ],
@@ -31,10 +31,10 @@ const plans = [
     description: 'Pilihan terbaik untuk kreator serius.',
     features: [
       'Kredit Tanpa Batas',
+      'Live Content Preview ✨',
       'Dukungan Video YouTube',
       'Brand Voice Tuning ✨',
       'AI Engine Prioritas (Lebih Cepat)',
-      'Arsip Proyek Pribadi',
     ],
     cta: 'Pilih Paket Pro',
     highlight: true,

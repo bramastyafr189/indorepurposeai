@@ -12,13 +12,13 @@ const steps = [
   },
   {
     title: 'Proses AI Magic',
-    description: 'AI kami menganalisis materi dan mengubahnya jadi 3 format berbeda secara instan.',
+    description: 'AI kami menganalisis materi dan mengubahnya jadi 6 format berbeda secara instan.',
     icon: Zap,
     color: 'bg-amber-500',
   },
   {
     title: 'Siap Posting',
-    description: 'Salin hasilnya dan publikasikan ke X, WhatsApp, dan LinkedIn dalam sekejap.',
+    description: 'Lihat pratinjau Live Mockup yang presisi dan publikasikan ke platform favorit Anda.',
     icon: Share2,
     color: 'bg-emerald-500',
   },

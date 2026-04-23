@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles } from 'lucide-react';
+import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye } from 'lucide-react';
 import { processContent, getHistory, deleteHistory } from './actions';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Youtube as YoutubeIcon, Twitter as TwitterIcon, Linkedin as LinkedinIcon, Instagram as InstagramIcon, Mail as MailIcon, Tiktok as TiktokIcon, Threads as ThreadsIcon } from '@/components/Icons';
+import { PreviewModal } from '@/components/PreviewModal';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { HowItWorks } from '@/components/HowItWorks';
@@ -41,6 +42,8 @@ export default function Home() {
   const [error, setError] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [tone, setTone] = useState<string>('professional');
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<{ platform: string, content: string }>({ platform: '', content: '' });
 
   useEffect(() => {
     fetchHistory();
@@ -330,6 +333,10 @@ export default function Home() {
                       icon={<TwitterIcon className="text-sky-500" />} 
                       content={results.x} 
                       onCopy={() => copyToClipboard(results.x, "Postingan X")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'X', content: results.x });
+                        setShowPreview(true);
+                      }}
                     />
                     <ResultCard 
                       index={1}
@@ -337,6 +344,10 @@ export default function Home() {
                       icon={<LinkedinIcon className="text-blue-700" />} 
                       content={results.linkedin} 
                       onCopy={() => copyToClipboard(results.linkedin, "Postingan LinkedIn")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'LinkedIn', content: results.linkedin });
+                        setShowPreview(true);
+                      }}
                     />
                     <ResultCard 
                       index={2}
@@ -344,6 +355,10 @@ export default function Home() {
                       icon={<ThreadsIcon className="text-slate-900 dark:text-white" />} 
                       content={results.threads} 
                       onCopy={() => copyToClipboard(results.threads, "Postingan Threads")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'Threads', content: results.threads });
+                        setShowPreview(true);
+                      }}
                     />
                     <ResultCard 
                       index={3}
@@ -351,6 +366,10 @@ export default function Home() {
                       icon={<InstagramIcon className="text-pink-600" />} 
                       content={results.instagram} 
                       onCopy={() => copyToClipboard(results.instagram, "Caption Instagram")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'Instagram', content: results.instagram });
+                        setShowPreview(true);
+                      }}
                     />
                     <ResultCard 
                       index={4}
@@ -358,6 +377,10 @@ export default function Home() {
                       icon={<TiktokIcon className="text-slate-900 dark:text-white" />} 
                       content={results.tiktok} 
                       onCopy={() => copyToClipboard(results.tiktok, "Skrip TikTok")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'TikTok', content: results.tiktok });
+                        setShowPreview(true);
+                      }}
                     />
                     <ResultCard 
                       index={5}
@@ -365,6 +388,10 @@ export default function Home() {
                       icon={<MailIcon className="text-amber-500" />} 
                       content={results.newsletter} 
                       onCopy={() => copyToClipboard(results.newsletter, "Ringkasan Newsletter")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'Newsletter', content: results.newsletter });
+                        setShowPreview(true);
+                      }}
                     />
                   </div>
                 </div>
@@ -372,6 +399,13 @@ export default function Home() {
             )}
           </AnimatePresence>
         </div>
+
+        <PreviewModal 
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          platform={previewData.platform}
+          content={previewData.content}
+        />
 
         <HowItWorks />
 
@@ -490,7 +524,7 @@ export default function Home() {
   );
 }
 
-function ResultCard({ title, icon, content, onCopy, index }: any) {
+function ResultCard({ title, icon, content, onCopy, onPreview, index }: any) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -514,26 +548,35 @@ function ResultCard({ title, icon, content, onCopy, index }: any) {
           </div>
           <span className="text-lg md:text-xl tracking-tight">{title}</span>
         </div>
-        <button 
-          onClick={handleCopy}
-          className={cn(
-            "p-3 rounded-xl transition-all duration-300 active:scale-90 border shadow-md",
-            copied 
-              ? "bg-emerald-500 text-white border-emerald-400" 
-              : "bg-white dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700 hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white"
-          )}
-        >
-          {copied ? (
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-            >
-              <Check size={20} />
-            </motion.div>
-          ) : (
-            <Copy size={20} />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={onPreview}
+            className="p-3 bg-white/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all duration-300 border border-slate-100 dark:border-slate-700"
+            title="Lihat Preview"
+          >
+            <Eye size={20} />
+          </button>
+          <button 
+            onClick={handleCopy}
+            className={cn(
+              "p-3 rounded-xl transition-all duration-300 active:scale-90 border shadow-md",
+              copied 
+                ? "bg-emerald-500 text-white border-emerald-400" 
+                : "bg-white dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700 hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white"
+            )}
+          >
+            {copied ? (
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
+                <Check size={20} />
+              </motion.div>
+            ) : (
+              <Copy size={20} />
+            )}
+          </button>
+        </div>
       </div>
       <div className="p-6 md:p-8 lg:p-10 flex-1 whitespace-pre-wrap text-sm md:text-base leading-relaxed text-slate-600 dark:text-slate-300 overflow-auto max-h-[400px] md:max-h-[500px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 font-sans font-medium">
         {content}

@@ -35,6 +35,7 @@ export default function RootLayout({
           defaultTheme="light"
           enableSystem
           disableTransitionOnChange
+          suppressHydrationWarning
         >
           <AntigravityEffect />
           {children}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -11,25 +11,34 @@ import {
   CreditCard, 
   Loader2, 
   LayoutDashboard,
-  RefreshCcw,
-  ShieldAlert,
-  Users,
-  TrendingUp,
-  History,
   Search,
   ChevronRight,
+  RefreshCw,
+  LifeBuoy,
+  MessageCircle,
+  Send,
+  Eye,
+  RefreshCcw,
+  ShieldAlert,
   Filter,
   DollarSign,
   Crown,
   History as HistoryIcon,
-  Eye,
-  MessageCircle,
   FileText,
-  Check
+  Check,
+  Trash2,
+  Users,
+  TrendingUp,
+  Newspaper as NewsletterIcon,
+  Sparkles as HighlightsIcon,
+  BookOpen as BlogIcon
 } from 'lucide-react';
 import { 
-  Twitter as TwitterIcon, 
-  Linkedin as LinkedinIcon 
+  Instagram as InstagramIcon,
+  Threads as ThreadsIcon,
+  Tiktok as TiktokIcon,
+  Twitter as TwitterIcon,
+  Linkedin as LinkedinIcon
 } from '@/components/Icons';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -40,14 +49,18 @@ import {
   getAdminStats,
   getAllTransactions,
   getAllUsers,
-  getAllHistoryAdmin
+  getAllHistoryAdmin,
+  getAllTicketsAdmin,
+  updateTicketStatus,
+  getTicketMessages,
+  sendTicketMessage
 } from '../actions';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-type TabType = 'overview' | 'verifikasi' | 'transaksi' | 'pengguna' | 'laporan';
+type TabType = 'overview' | 'verifikasi' | 'transaksi' | 'pengguna' | 'laporan' | 'aduan';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -57,11 +70,51 @@ export default function AdminDashboard() {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [replyMessage, setReplyMessage] = useState("");
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'created_at', direction: 'desc' });
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [ticketMessages]);
+
+  useEffect(() => {
+    let interval: any;
+    if (selectedTicketId) {
+      interval = setInterval(() => {
+        loadMessages(selectedTicketId);
+      }, 30000); // 30 seconds for chat
+    }
+    return () => clearInterval(interval);
+  }, [selectedTicketId]);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    fetchUser();
+    fetchData();
+
+    // Global Auto-Refresh every 2 minutes for main dashboard data
+    const globalInterval = setInterval(() => {
+      fetchData();
+    }, 120000);
+
+    return () => clearInterval(globalInterval);
+  }, []);
 
   // Payment Method Mapping for Admin Display
   const PAYMENT_METHODS: Record<string, { name: string, logo: string }> = {
@@ -75,12 +128,13 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [statsRes, verifyingRes, allTxRes, usersRes, historyRes] = await Promise.all([
+      const [statsRes, verifyingRes, allTxRes, usersRes, historyRes, ticketsRes] = await Promise.all([
         getAdminStats(),
         getVerifyingTransactions(),
         getAllTransactions(),
         getAllUsers(),
-        getAllHistoryAdmin()
+        getAllHistoryAdmin(),
+        getAllTicketsAdmin()
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
@@ -88,6 +142,7 @@ export default function AdminDashboard() {
       if (allTxRes.success) setAllTransactions(allTxRes.data || []);
       if (usersRes.success) setUsers(usersRes.data || []);
       if (historyRes.success) setHistory(historyRes.data || []);
+      if (ticketsRes && (ticketsRes as any).success) setTickets((ticketsRes as any).data || []);
 
       if (!statsRes.success && statsRes.error === 'Unauthorized') {
         setIsAuthorized(false);
@@ -98,9 +153,6 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const handleApprove = async (id: string) => {
     if (!confirm('Setujui transaksi ini?')) return;
@@ -122,6 +174,39 @@ export default function AdminDashboard() {
     if (res.success) {
       toast.info('Ditolak');
       fetchData();
+    } else {
+      toast.error(res.error);
+    }
+    setProcessingId(null);
+  };
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    setProcessingId(id);
+    const res = await updateTicketStatus(id, status);
+    if (res.success) {
+      toast.success(`Tiket diupdate ke ${status}`);
+      fetchData();
+    } else {
+      toast.error(res.error);
+    }
+    setProcessingId(null);
+  };
+
+  const loadMessages = async (ticketId: string) => {
+    const res = await getTicketMessages(ticketId);
+    if (res.success) {
+      setTicketMessages(res.data || []);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!selectedTicketId || !replyMessage.trim()) return;
+    setProcessingId(selectedTicketId);
+    const res = await sendTicketMessage(selectedTicketId, replyMessage);
+    if (res.success) {
+      setReplyMessage("");
+      loadMessages(selectedTicketId);
+      toast.success("Balasan terkirim");
     } else {
       toast.error(res.error);
     }
@@ -204,9 +289,10 @@ export default function AdminDashboard() {
             {[
               { id: 'overview', label: 'Overview', icon: LayoutDashboard },
               { id: 'verifikasi', label: 'Verifikasi', icon: CheckCircle2, badge: transactions.length },
-              { id: 'transaksi', label: 'Semua Transaksi', icon: History },
+              { id: 'transaksi', label: 'Semua Transaksi', icon: HistoryIcon },
               { id: 'pengguna', label: 'Pengguna', icon: Users },
               { id: 'laporan', label: 'Laporan', icon: HistoryIcon },
+              { id: 'aduan', label: 'Tiket Support', icon: LifeBuoy, badge: tickets.filter(t => t.status === 'open').length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -594,6 +680,80 @@ export default function AdminDashboard() {
                     )}
                   </motion.div>
                 )}
+
+                {activeTab === 'aduan' && (
+                  <motion.div
+                    key="aduan"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                  >
+                    {tickets.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-6">
+                        {tickets.filter(t => 
+                          t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (t.profiles?.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+                        ).map((ticket) => (
+                          <div key={ticket.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/20 flex flex-col md:flex-row items-start justify-between gap-8 group hover:border-blue-500/30 transition-all">
+                            <div className="flex-1 space-y-4">
+                              <div className="flex items-center gap-3">
+                                <span className={cn(
+                                  "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                                  ticket.status === 'open' ? "bg-amber-100 text-amber-600" :
+                                  "bg-emerald-100 text-emerald-600"
+                                )}>
+                                  {ticket.status}
+                                </span>
+                                <span className="text-xs font-bold text-slate-400">ID Tiket: {ticket.id.slice(0, 8)}</span>
+                              </div>
+                              <h3 className="text-2xl font-black text-slate-900 dark:text-white font-display tracking-tight">{ticket.subject}</h3>
+                              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{ticket.message}</p>
+                              </div>
+                                <div className="flex items-center gap-2">
+                                  <Mail size={14} className="text-blue-500" /> 
+                                  {ticket.profiles?.email || `ID: ${ticket.user_id.slice(0, 8)}...`}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock size={14} className="text-blue-500" /> 
+                                  {new Date(ticket.created_at).toLocaleString('id-ID')}
+                                </div>
+                                                    <div className="flex flex-row md:flex-col gap-3 shrink-0 w-full md:w-auto">
+                              {ticket.status !== 'resolved' && (
+                                <button 
+                                  onClick={() => handleUpdateStatus(ticket.id, 'resolved')}
+                                  className="flex-1 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all"
+                                >
+                                  Selesaikan (Resolved)
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => {
+                                  setSelectedTicketId(ticket.id);
+                                  loadMessages(ticket.id);
+                                }}
+                                className="flex-1 px-6 py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                              >
+                                <MessageCircle size={14} /> Buka Percakapan
+                              </button>
+                              {ticket.status === 'resolved' && (
+                                <button 
+                                  onClick={() => handleUpdateStatus(ticket.id, 'open')}
+                                  className="flex-1 px-6 py-4 border border-slate-200 dark:border-slate-800 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all"
+                                >
+                                  Aktifkan Kembali
+                                </button>
+                              )}
+                            </div>
+     </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState message="Semua masalah pengguna telah terselesaikan." />
+                    )}
+                  </motion.div>
+                )}
               </AnimatePresence>
             )}
           </div>
@@ -648,25 +808,71 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Results Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <ResultColumn 
-                    title="X (Twitter)" 
-                    icon={<TwitterIcon size={16} />} 
-                    content={selectedLog.result_x} 
-                    color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
-                  />
-                  <ResultColumn 
-                    title="WhatsApp" 
-                    icon={<MessageCircle size={16} />} 
-                    content={selectedLog.result_whatsapp} 
-                    color="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
-                  />
-                  <ResultColumn 
-                    title="LinkedIn" 
-                    icon={<LinkedinIcon size={16} />} 
-                    content={selectedLog.result_linkedin} 
-                    color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {selectedLog.result_x && (
+                    <ResultColumn 
+                      title="X (Twitter)" 
+                      icon={<TwitterIcon size={16} />} 
+                      content={selectedLog.result_x} 
+                      color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                    />
+                  )}
+                  {selectedLog.result_linkedin && (
+                    <ResultColumn 
+                      title="LinkedIn" 
+                      icon={<LinkedinIcon size={16} />} 
+                      content={selectedLog.result_linkedin} 
+                      color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                    />
+                  )}
+                  {selectedLog.result_instagram && (
+                    <ResultColumn 
+                      title="Instagram" 
+                      icon={<InstagramIcon size={16} />} 
+                      content={selectedLog.result_instagram} 
+                      color="text-pink-600 bg-pink-50 dark:bg-pink-900/20"
+                    />
+                  )}
+                  {selectedLog.result_tiktok && (
+                    <ResultColumn 
+                      title="TikTok" 
+                      icon={<TiktokIcon size={16} />} 
+                      content={selectedLog.result_tiktok} 
+                      color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                    />
+                  )}
+                  {selectedLog.result_newsletter && (
+                    <ResultColumn 
+                      title="Newsletter" 
+                      icon={<NewsletterIcon size={16} />} 
+                      content={selectedLog.result_newsletter} 
+                      color="text-amber-600 bg-amber-50 dark:bg-amber-900/20"
+                    />
+                  )}
+                  {selectedLog.result_threads && (
+                    <ResultColumn 
+                      title="Threads" 
+                      icon={<ThreadsIcon size={16} />} 
+                      content={selectedLog.result_threads} 
+                      color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                    />
+                  )}
+                  {selectedLog.result_highlights && (
+                    <ResultColumn 
+                      title="Highlights" 
+                      icon={<HighlightsIcon size={16} />} 
+                      content={selectedLog.result_highlights} 
+                      color="text-purple-600 bg-purple-50 dark:bg-purple-900/20"
+                    />
+                  )}
+                  {selectedLog.result_blog && (
+                    <ResultColumn 
+                      title="Blog Post" 
+                      icon={<BlogIcon size={16} />} 
+                      content={selectedLog.result_blog} 
+                      color="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
+                    />
+                  )}
                 </div>
               </div>
               
@@ -675,6 +881,114 @@ export default function AdminDashboard() {
                   <Clock size={12} />
                   Dibuat pada {new Date(selectedLog.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedTicketId && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedTicketId(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <LifeBuoy size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white">Chat Support</h3>
+                    <p className="text-xs font-bold text-slate-400">ID Tiket: {selectedTicketId.slice(0, 8)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => loadMessages(selectedTicketId)}
+                    disabled={!!processingId}
+                    className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-blue-500 transition-colors"
+                  >
+                    <RefreshCw size={20} className={cn(processingId === 'refresh' && "animate-spin")} />
+                  </button>
+                  <button 
+                    onClick={() => setSelectedTicketId(null)}
+                    className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors"
+                  >
+                    <XCircle size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/30 dark:bg-slate-900/30">
+                {ticketMessages.map((msg) => (
+                  <div key={msg.id} className={cn(
+                    "flex flex-col max-w-[85%]",
+                    currentUser && msg.sender_id === currentUser.id ? "ml-auto items-end" : "mr-auto items-start"
+                  )}>
+                    <div className={cn(
+                      "p-4 rounded-2xl text-sm font-medium leading-relaxed shadow-sm",
+                      currentUser && msg.sender_id === currentUser.id
+                        ? "bg-blue-600 text-white rounded-tr-none" 
+                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-tl-none"
+                    )}>
+                      {msg.message}
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 mt-2 flex items-center gap-1 px-1">
+                      {currentUser && msg.sender_id === currentUser.id ? 'Anda (Admin)' : (msg.profiles?.email || 'Pengguna')} • {new Date(msg.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+                {ticketMessages.length === 0 && (
+                  <div className="text-center py-10">
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                      <MessageCircle size={32} />
+                    </div>
+                    <p className="text-sm font-bold text-slate-400">Belum ada percakapan</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                {tickets.find(t => t.id === selectedTicketId)?.status === 'resolved' ? (
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-800 flex items-center justify-center text-emerald-600">
+                      <CheckCircle2 size={16} />
+                    </div>
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 leading-relaxed text-center flex-1">
+                      Tiket telah selesai diselesaikan. Chat ditutup.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={replyMessage}
+                      onChange={(e) => setReplyMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
+                      placeholder="Tulis balasan..."
+                      className="flex-1 px-6 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                    />
+                    <button
+                      onClick={handleSendReply}
+                      disabled={!replyMessage.trim() || !!processingId}
+                      className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+                    >
+                      <Send size={20} />
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
@@ -739,7 +1053,7 @@ function VerifikasiCard({ tx, onApprove, onReject, processingId, methodInfo }: a
           <div className="flex items-center justify-center md:justify-start gap-4 text-slate-500 font-medium">
             <div className="flex items-center gap-1.5 text-xs">
               <Mail size={14} className="text-blue-500" />
-              {tx.profiles?.email || 'No Email'}
+              {tx.profiles?.email || `ID: ${tx.user_id.slice(0, 8)}...`}
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <Clock size={14} className="text-blue-500" />

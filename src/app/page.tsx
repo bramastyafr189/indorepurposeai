@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye } from 'lucide-react';
-import { processContent, getHistory, deleteHistory } from './actions';
+import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react';
+import { processContent, getHistory, deleteHistory, createTicket, getTickets, getTicketMessages, sendTicketMessage } from './actions';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Youtube as YoutubeIcon, Twitter as TwitterIcon, Linkedin as LinkedinIcon, Instagram as InstagramIcon, Mail as MailIcon, Tiktok as TiktokIcon, Threads as ThreadsIcon } from '@/components/Icons';
@@ -47,10 +47,44 @@ export default function Home() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<{ platform: string, content: string }>({ platform: '', content: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean, id: string }>({ show: false, id: '' });
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [ticketForm, setTicketForm] = useState({ subject: '', message: '' });
+  const [ticketLoading, setTicketLoading] = useState(false);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [replyMessage, setReplyMessage] = useState("");
   const resultsRef = React.useRef<HTMLDivElement>(null);
+  const chatEndRef = React.useRef<HTMLDivElement>(null);
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [ticketMessages]);
+
+  useEffect(() => {
+    let interval: any;
+    if (selectedTicketId && showSupportModal) {
+      interval = setInterval(() => {
+        loadTicketMessages(selectedTicketId);
+        fetchTickets(); // Also refresh tickets to catch status changes
+      }, 30000); // Poll every 30 seconds to save data/battery
+    }
+    return () => clearInterval(interval);
+  }, [selectedTicketId, showSupportModal]);
 
   useEffect(() => {
     fetchHistory();
+    const fetchUser = async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    fetchUser();
   }, []);
 
   const fetchHistory = async () => {
@@ -115,6 +149,67 @@ export default function Home() {
     }, 100);
     
     toast.info('Proyek dimuat dari arsip');
+  };
+
+  const fetchTickets = async () => {
+    const res = await getTickets();
+    if (res.success) {
+      setTickets(res.data || []);
+    }
+  };
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketForm.subject || !ticketForm.message) return;
+    
+    setTicketLoading(true);
+    const res = await createTicket(ticketForm.subject, ticketForm.message);
+    if (res.success) {
+      toast.success('Aduan berhasil dikirim', {
+        description: 'Tim kami akan segera memproses laporan Anda.'
+      });
+      setTicketForm({ subject: '', message: '' });
+      fetchTickets();
+    } else {
+      toast.error('Gagal mengirim aduan');
+    }
+    setTicketLoading(false);
+  };
+
+  useEffect(() => {
+    if (showSupportModal) {
+      fetchTickets();
+    }
+  }, [showSupportModal]);
+
+  const loadTicketMessages = async (ticketId: string) => {
+    const res = await getTicketMessages(ticketId);
+    if (res.success) {
+      const messages = res.data || [];
+      setTicketMessages(messages);
+      if (messages.length > 0 && currentUser) {
+        // If last message sender is NOT current user, then Admin has replied
+        setIsWaitingForAdmin(messages[messages.length - 1]?.sender_id === currentUser.id);
+      } else {
+        setIsWaitingForAdmin(false);
+      }
+    }
+  };
+
+  const [isWaitingForAdmin, setIsWaitingForAdmin] = useState(false);
+
+  const handleSendUserReply = async () => {
+    if (!selectedTicketId || !replyMessage.trim()) return;
+    setTicketLoading(true);
+    const res = await sendTicketMessage(selectedTicketId, replyMessage);
+    if (res.success) {
+      setReplyMessage("");
+      setIsWaitingForAdmin(true); // Immediate lockout
+      loadTicketMessages(selectedTicketId);
+    } else {
+      toast.error(res.error);
+    }
+    setTicketLoading(false);
   };
 
   const copyToClipboard = (text: string, title: string) => {
@@ -342,101 +437,360 @@ export default function Home() {
                     </p>
                   </motion.div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
-                    <ResultCard 
-                      index={0}
-                      title="Postingan X" 
-                      icon={<TwitterIcon className="text-sky-500" />} 
-                      content={results.x} 
-                      onCopy={() => copyToClipboard(results.x, "Postingan X")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'X', content: results.x });
-                        setShowPreview(true);
-                      }}
-                    />
-                    <ResultCard 
-                      index={1}
-                      title="Postingan LinkedIn" 
-                      icon={<LinkedinIcon className="text-blue-700" />} 
-                      content={results.linkedin} 
-                      onCopy={() => copyToClipboard(results.linkedin, "Postingan LinkedIn")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'LinkedIn', content: results.linkedin });
-                        setShowPreview(true);
-                      }}
-                    />
-                    <ResultCard 
-                      index={2}
-                      title="Postingan Threads" 
-                      icon={<ThreadsIcon className="text-slate-900 dark:text-white" />} 
-                      content={results.threads} 
-                      onCopy={() => copyToClipboard(results.threads, "Postingan Threads")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'Threads', content: results.threads });
-                        setShowPreview(true);
-                      }}
-                    />
-                    <ResultCard 
-                      index={3}
-                      title="Instagram Feed/Reels" 
-                      icon={<InstagramIcon className="text-pink-600" />} 
-                      content={results.instagram} 
-                      onCopy={() => copyToClipboard(results.instagram, "Caption Instagram")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'Instagram', content: results.instagram });
-                        setShowPreview(true);
-                      }}
-                    />
-                    <ResultCard 
-                      index={4}
-                      title="TikTok Viral Script" 
-                      icon={<TiktokIcon className="text-slate-900 dark:text-white" />} 
-                      content={results.tiktok} 
-                      onCopy={() => copyToClipboard(results.tiktok, "Skrip TikTok")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'TikTok', content: results.tiktok });
-                        setShowPreview(true);
-                      }}
-                    />
-                    <ResultCard 
-                      index={5}
-                      title="Newsletter" 
-                      icon={<MailIcon className="text-amber-500" />} 
-                      content={results.newsletter} 
-                      onCopy={() => copyToClipboard(results.newsletter, "Ringkasan Newsletter")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'Newsletter', content: results.newsletter });
-                        setShowPreview(true);
-                      }}
-                    />
-                    <ResultCard 
-                      index={6}
-                      title="Video Highlights" 
-                      icon={<YoutubeIcon className="text-red-600" />} 
-                      content={results.highlights} 
-                      onCopy={() => copyToClipboard(results.highlights, "Video Highlights")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'Highlights', content: results.highlights });
-                        setShowPreview(true);
-                      }}
-                    />
-                    <ResultCard 
-                      index={7}
-                      title="SEO Blog Post" 
-                      icon={<FileText className="text-indigo-600" />} 
-                      content={results.blog} 
-                      onCopy={() => copyToClipboard(results.blog, "SEO Blog Post")}
-                      onPreview={() => {
-                        setPreviewData({ platform: 'Blog', content: results.blog });
-                        setShowPreview(true);
-                      }}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                    {results.x && (
+                      <ResultCard 
+                        index={0}
+                        title="X (Twitter)" 
+                        icon={<TwitterIcon size={20} />} 
+                        color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                        content={results.x} 
+                        onCopy={() => copyToClipboard(results.x, "Postingan X")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'X', content: results.x });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
+                    {results.linkedin && (
+                      <ResultCard 
+                        index={1}
+                        title="LinkedIn Post" 
+                        icon={<LinkedinIcon size={20} />} 
+                        color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                        content={results.linkedin} 
+                        onCopy={() => copyToClipboard(results.linkedin, "Postingan LinkedIn")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'LinkedIn', content: results.linkedin });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
+                    {results.instagram && (
+                      <ResultCard 
+                        index={2}
+                        title="Instagram Caption" 
+                        icon={<InstagramIcon size={20} />} 
+                        color="text-pink-600 bg-pink-50 dark:bg-pink-900/20"
+                        content={results.instagram} 
+                        onCopy={() => copyToClipboard(results.instagram, "Caption Instagram")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'Instagram', content: results.instagram });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
+                    {results.tiktok && (
+                      <ResultCard 
+                        index={3}
+                        title="TikTok Script" 
+                        icon={<TiktokIcon size={20} />} 
+                        color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                        content={results.tiktok} 
+                        onCopy={() => copyToClipboard(results.tiktok, "Script TikTok")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'TikTok', content: results.tiktok });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
+                    {results.newsletter && (
+                      <ResultCard 
+                        index={4}
+                        title="Newsletter" 
+                        icon={<MessageSquare size={20} />} 
+                        color="text-amber-600 bg-amber-50 dark:bg-amber-900/20"
+                        content={results.newsletter} 
+                        onCopy={() => copyToClipboard(results.newsletter, "Ringkasan Newsletter")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'Newsletter', content: results.newsletter });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
+                    {results.threads && (
+                      <ResultCard 
+                        index={5}
+                        title="Threads" 
+                        icon={<ThreadsIcon size={20} />} 
+                        color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                        content={results.threads} 
+                        onCopy={() => copyToClipboard(results.threads, "Postingan Threads")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'Threads', content: results.threads });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
+                    {results.highlights && (
+                      <ResultCard 
+                        index={6}
+                        title="Highlights" 
+                        icon={<Sparkles size={20} />} 
+                        color="text-purple-600 bg-purple-50 dark:bg-purple-900/20"
+                        content={results.highlights} 
+                        onCopy={() => copyToClipboard(results.highlights, "Video Highlights")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'Highlights', content: results.highlights });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
+                    {results.blog && (
+                      <ResultCard 
+                        index={7}
+                        title="Blog Post" 
+                        icon={<FileText size={20} />} 
+                        color="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
+                        content={results.blog} 
+                        onCopy={() => copyToClipboard(results.blog, "SEO Blog Post")}
+                        onPreview={() => {
+                          setPreviewData({ platform: 'Blog', content: results.blog });
+                          setShowPreview(true);
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               </section>
             )}
           </AnimatePresence>
         </div>
+
+      {/* Floating Support Button */}
+      <button 
+        onClick={() => setShowSupportModal(true)}
+        className="fixed bottom-8 right-8 z-[90] w-14 h-14 md:w-16 md:h-16 bg-blue-600 text-white rounded-full shadow-2xl shadow-blue-500/40 flex items-center justify-center hover:scale-110 hover:rotate-12 transition-all duration-300 group"
+      >
+        <LifeBuoy size={28} className="group-hover:animate-pulse" />
+        <div className="absolute right-full mr-4 px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          Pusat Bantuan
+        </div>
+      </button>
+
+      {/* Support Modal */}
+      <AnimatePresence>
+        {showSupportModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSupportModal(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl border border-white/20 dark:border-slate-800"
+            >
+              <div className="flex flex-col h-full">
+                {/* Header */}
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                      <LifeBuoy className="text-blue-600" /> Pusat Bantuan
+                    </h2>
+                    <p className="text-slate-500 text-sm mt-1">Kami siap membantu kendala Anda</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowSupportModal(false)}
+                    className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-colors"
+                  >
+                    <Trash2 size={20} className="rotate-45" />
+                  </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex p-2 bg-slate-50 dark:bg-slate-950/50 m-6 rounded-2xl">
+                  <button 
+                    onClick={() => setPreviewData({ platform: 'new', content: '' })}
+                    className={cn(
+                      "flex-1 py-3 px-4 rounded-xl text-sm font-black transition-all",
+                      previewData.platform !== 'history' ? "bg-white dark:bg-slate-800 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    Kirim Aduan
+                  </button>
+                  <button 
+                    onClick={() => setPreviewData({ platform: 'history', content: '' })}
+                    className={cn(
+                      "flex-1 py-3 px-4 rounded-xl text-sm font-black transition-all",
+                      previewData.platform === 'history' ? "bg-white dark:bg-slate-800 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    Riwayat Tiket ({tickets.length})
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 pt-0">
+                  {previewData.platform !== 'history' ? (
+                    <form onSubmit={handleCreateTicket} className="space-y-6">
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Subjek Masalah</label>
+                        <input 
+                          type="text"
+                          value={ticketForm.subject}
+                          onChange={(e) => setTicketForm({...ticketForm, subject: e.target.value})}
+                          placeholder="Misal: Gagal memproses video YouTube"
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 dark:text-white font-bold"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Detail Aduan</label>
+                        <textarea 
+                          rows={5}
+                          value={ticketForm.message}
+                          onChange={(e) => setTicketForm({...ticketForm, message: e.target.value})}
+                          placeholder="Jelaskan kendala Anda secara detail agar tim kami bisa membantu lebih cepat..."
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 dark:text-white font-bold resize-none"
+                          required
+                        />
+                      </div>
+                      <button 
+                        type="submit"
+                        disabled={ticketLoading}
+                        className="w-full py-5 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-blue-500/20 disabled:opacity-50"
+                      >
+                        {ticketLoading ? <Loader2 className="animate-spin" /> : <Send size={20} />}
+                        Kirim Aduan Sekarang
+                      </button>
+                    </form>
+                  ) : selectedTicketId ? (
+                    <div className="flex flex-col h-full min-h-[400px]">
+                      <div className="flex items-center justify-between mb-6">
+                        <button 
+                          onClick={() => setSelectedTicketId(null)}
+                          className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest hover:translate-x-[-4px] transition-transform"
+                        >
+                          <Trash2 size={14} className="rotate-45" /> Kembali ke Riwayat
+                        </button>
+                        <button 
+                          onClick={() => loadTicketMessages(selectedTicketId!)}
+                          disabled={ticketLoading}
+                          className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-blue-600 transition-all"
+                        >
+                          <RefreshCw size={14} className={cn(ticketLoading && "animate-spin")} />
+                        </button>
+                      </div>
+
+                      <div className="flex-1 space-y-6 mb-6 overflow-y-auto pr-2 max-h-[400px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                        {ticketMessages.map((msg) => (
+                          <div key={msg.id} className={cn(
+                            "flex flex-col max-w-[85%]",
+                            currentUser && msg.sender_id === currentUser.id ? "ml-auto items-end" : "mr-auto items-start"
+                          )}>
+                            <div className={cn(
+                              "p-4 rounded-2xl text-sm font-medium shadow-sm",
+                              currentUser && msg.sender_id === currentUser.id
+                                ? "bg-blue-600 text-white rounded-tr-none" 
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-tl-none" 
+                            )}>
+                              {msg.message}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 mt-2 flex items-center gap-1 px-1">
+                              {currentUser && msg.sender_id === currentUser.id ? 'Anda' : 'Admin'} • {new Date(msg.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ))}
+                        {ticketMessages.length === 0 && (
+                          <div className="text-center py-10 opacity-50">
+                            <p className="text-sm font-bold">Menunggu respon tim kami...</p>
+                          </div>
+                        )}
+                        <div ref={chatEndRef} />
+                      </div>
+
+                      <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
+                        {tickets.find(t => t.id === selectedTicketId)?.status === 'resolved' ? (
+                          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-800 flex items-center justify-center text-emerald-600">
+                              <CheckCircle2 size={16} />
+                            </div>
+                            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                              Masalah ini telah selesai diselesaikan. Chat ditutup.
+                            </p>
+                          </div>
+                        ) : isWaitingForAdmin ? (
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-800/50 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-800 flex items-center justify-center text-amber-600">
+                              <Clock size={16} />
+                            </div>
+                            <p className="text-xs font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
+                              Mohon tunggu balasan dari Admin sebelum mengirim pesan berikutnya.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="flex gap-3">
+                            <input
+                              type="text"
+                              value={replyMessage}
+                              onChange={(e) => setReplyMessage(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSendUserReply()}
+                              placeholder="Tulis balasan..."
+                              className="flex-1 px-6 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                            />
+                            <button
+                              onClick={handleSendUserReply}
+                              disabled={!replyMessage.trim() || ticketLoading}
+                              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+                            >
+                              <Send size={20} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {tickets.length === 0 ? (
+                        <div className="text-center py-12">
+                          <MessageCircle size={48} className="mx-auto text-slate-200 mb-4" />
+                          <p className="text-slate-400 font-bold">Belum ada riwayat aduan</p>
+                        </div>
+                      ) : (
+                        tickets.map((ticket) => (
+                          <div 
+                            key={ticket.id} 
+                            onClick={() => {
+                              setSelectedTicketId(ticket.id);
+                              loadTicketMessages(ticket.id);
+                            }}
+                            className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 group hover:border-blue-500/30 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <h4 className="font-black text-slate-900 dark:text-white pr-4 group-hover:text-blue-600 transition-colors">{ticket.subject}</h4>
+                              <span className={cn(
+                                "shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                                ticket.status === 'open' ? "bg-amber-100 text-amber-600" :
+                                ticket.status === 'in_progress' ? "bg-blue-100 text-blue-600" :
+                                "bg-emerald-100 text-emerald-600"
+                              )}>
+                                {ticket.status}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed">{ticket.message}</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400">
+                                <span className="flex items-center gap-1.5"><Clock size={14} /> {new Date(ticket.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                                {ticket.status === 'resolved' && <span className="flex items-center gap-1.5 text-emerald-500"><CheckCircle2 size={14} /> Terselesaikan</span>}
+                              </div>
+                              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Lihat Chat &rarr;</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
         <PreviewModal 
         isOpen={showPreview}
@@ -605,7 +959,7 @@ export default function Home() {
   );
 }
 
-function ResultCard({ title, icon, content, onCopy, onPreview, index }: any) {
+function ResultCard({ title, icon, content, onCopy, onPreview, index, color }: any) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -619,15 +973,15 @@ function ResultCard({ title, icon, content, onCopy, onPreview, index }: any) {
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: index * 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-2xl md:rounded-3xl border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 overflow-hidden group glow-blue"
+      transition={{ delay: index * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const }}
+      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 overflow-hidden group"
     >
-      <div className="p-4 md:p-5 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
-        <div className="flex items-center gap-3 md:gap-4 font-extrabold text-slate-900 dark:text-white font-display">
-          <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl md:rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm transition-transform duration-500 group-hover:scale-110 group-hover:rotate-2">
+      <div className="p-6 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
+        <div className="flex items-center gap-4 font-black text-slate-900 dark:text-white">
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3", color)}>
             {icon}
           </div>
-          <span className="text-base md:text-lg tracking-tight">{title}</span>
+          <span className="text-lg tracking-tight">{title}</span>
         </div>
         <div className="flex items-center gap-2">
           <button 

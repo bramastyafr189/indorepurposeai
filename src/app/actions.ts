@@ -380,21 +380,28 @@ export async function getVerifyingTransactions() {
     return { success: false, error: 'Unauthorized' };
   }
 
+  const adminSupabase = createAdminClient();
+
   try {
     // Join with profiles to get user email for display
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from('transactions')
-      .select(`
-        *,
-        profiles (
-          email
-        )
-      `)
+      .select('*')
       .eq('status', 'verifying')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { success: true, data };
+
+    const transactionsWithProfiles = await Promise.all((data || []).map(async (tx: any) => {
+      const { data: profile } = await adminSupabase
+        .from('profiles')
+        .select('email')
+        .eq('id', tx.user_id)
+        .single();
+      return { ...tx, profiles: profile };
+    }));
+
+    return { success: true, data: transactionsWithProfiles };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -408,9 +415,11 @@ export async function approveTransaction(transactionId: string) {
     return { success: false, error: 'Unauthorized' };
   }
 
+  const adminSupabase = createAdminClient();
+
   try {
     // 1. Get transaction details
-    const { data: tx, error: txError } = await supabase
+    const { data: tx, error: txError } = await adminSupabase
       .from('transactions')
       .select('*')
       .eq('id', transactionId)
@@ -419,7 +428,7 @@ export async function approveTransaction(transactionId: string) {
     if (txError || !tx) throw new Error('Transaksi tidak ditemukan');
 
     // 2. Get user profile
-    const { data: profile, error: pError } = await supabase
+    const { data: profile, error: pError } = await adminSupabase
       .from('profiles')
       .select('credits, plan_expires_at')
       .eq('id', tx.user_id)
@@ -447,7 +456,7 @@ export async function approveTransaction(transactionId: string) {
     }
 
     // 5. Atomic Updates (Credits, Status, & Expiry)
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('profiles')
       .update({ 
         credits: (profile.credits || 0) + creditsToAdd,
@@ -458,7 +467,7 @@ export async function approveTransaction(transactionId: string) {
 
     if (updateError) throw updateError;
 
-    const { error: statusError } = await supabase
+    const { error: statusError } = await adminSupabase
       .from('transactions')
       .update({ status: 'success' })
       .eq('id', transactionId);
@@ -480,8 +489,10 @@ export async function rejectTransaction(transactionId: string) {
     return { success: false, error: 'Unauthorized' };
   }
 
+  const adminSupabase = createAdminClient();
+
   try {
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from('transactions')
       .update({ status: 'rejected' })
       .eq('id', transactionId);
@@ -553,16 +564,21 @@ export async function getAllTransactions() {
   try {
     const { data, error } = await adminSupabase
       .from('transactions')
-      .select(`
-        *,
-        profiles (
-          email
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { success: true, data };
+
+    const transactionsWithProfiles = await Promise.all((data || []).map(async (tx: any) => {
+      const { data: profile } = await adminSupabase
+        .from('profiles')
+        .select('email')
+        .eq('id', tx.user_id)
+        .single();
+      return { ...tx, profiles: profile };
+    }));
+
+    return { success: true, data: transactionsWithProfiles };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -596,30 +612,23 @@ export async function getAllHistoryAdmin() {
   const adminSupabase = createAdminClient();
 
   try {
-    // Try with Join first
-    let { data, error } = await adminSupabase
+    const { data, error } = await adminSupabase
       .from('history')
-      .select(`
-        *,
-        profiles (
-          email
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
-    // If join fails (e.g. no Foreign Key defined), fallback to simple select
-    if (error) {
-      console.error('History Join Error:', error.message);
-      const { data: simpleData, error: simpleError } = await adminSupabase
-        .from('history')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (simpleError) throw simpleError;
-      return { success: true, data: simpleData };
-    }
+    if (error) throw error;
 
-    return { success: true, data };
+    const historyWithProfiles = await Promise.all((data || []).map(async (item: any) => {
+      const { data: profile } = await adminSupabase
+        .from('profiles')
+        .select('email')
+        .eq('id', item.user_id)
+        .single();
+      return { ...item, profiles: profile };
+    }));
+
+    return { success: true, data: historyWithProfiles };
   } catch (error: any) {
     console.error('getAllHistoryAdmin Final Error:', error.message);
     return { success: false, error: error.message };
@@ -633,6 +642,162 @@ export async function updateTransactionProof(transactionId: string, proofUrl: st
       .from('transactions')
       .update({ proof_url: proofUrl })
       .eq('id', transactionId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function createTicket(subject: string, message: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  try {
+    // 1. Create Ticket
+    const { data: ticket, error: ticketError } = await supabase
+      .from('tickets')
+      .insert([{
+        user_id: user.id,
+        subject,
+        message,
+        status: 'open'
+      }])
+      .select()
+      .single();
+
+    if (ticketError) throw ticketError;
+
+    // 2. Create Initial Message
+    const { error: msgError } = await supabase
+      .from('ticket_messages')
+      .insert([{
+        ticket_id: ticket.id,
+        sender_id: user.id,
+        message: message
+      }]);
+
+    if (msgError) throw msgError;
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getTickets() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getAllTicketsAdmin() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  const adminSupabase = createAdminClient();
+
+  try {
+    const { data, error } = await adminSupabase
+      .from('tickets')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const ticketsWithProfiles = await Promise.all((data || []).map(async (ticket: any) => {
+      const { data: profile } = await adminSupabase
+        .from('profiles')
+        .select('email')
+        .eq('id', ticket.user_id)
+        .single();
+      return { ...ticket, profiles: profile };
+    }));
+
+    return { success: true, data: ticketsWithProfiles };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateTicketStatus(ticketId: string, status: string) {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { error } = await supabase
+      .from('tickets')
+      .update({ status })
+      .eq('id', ticketId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getTicketMessages(ticketId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { data, error } = await supabase
+      .from('ticket_messages')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    
+    // Manual join-like mapping to profiles to avoid complex join syntax errors
+    const messagesWithProfiles = await Promise.all((data || []).map(async (msg: any) => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, role')
+        .eq('id', msg.sender_id)
+        .single();
+      return { ...msg, profiles: profile };
+    }));
+
+    return { success: true, data: messagesWithProfiles };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendTicketMessage(ticketId: string, message: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { error } = await supabase
+      .from('ticket_messages')
+      .insert([{
+        ticket_id: ticketId,
+        sender_id: user.id,
+        message
+      }]);
 
     if (error) throw error;
     return { success: true };

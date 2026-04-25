@@ -47,7 +47,7 @@ export function Hero() {
             Platform AI all-in-one untuk <span className="text-slate-900 dark:text-slate-200 font-semibold">kreator Indonesia</span>. 
             Ubah YouTube atau artikel menjadi konten <span className="text-indigo-600 dark:text-indigo-400 font-bold">viral</span> untuk 
             <span className="relative inline-block mx-1 text-slate-900 dark:text-slate-200 font-bold group">
-              6 platform
+              8 format
               <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-indigo-500/30 dark:bg-indigo-400/30" />
             </span> 
             sosial media dalam sekejap.

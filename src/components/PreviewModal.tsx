@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X as CloseIcon, Heart, MessageCircle, Share2, Repeat2, MoreHorizontal, Bookmark, Send, Eye, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { X as CloseIcon, Heart, MessageCircle, Share2, Repeat2, MoreHorizontal, Bookmark, Send, Eye, ChevronLeft, ChevronRight, Sparkles, FileText } from 'lucide-react';
 import { Twitter, Linkedin, Instagram, Tiktok, Threads, Mail } from './Icons';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +27,7 @@ export const PreviewModal = ({ isOpen, onClose, platform, content }: PreviewModa
   // Helper to parse structured content (Hook, Narasi, Visual, etc)
   const parseContent = (text: string) => {
     const parts: Record<string, any> = {};
+    if (!text) return parts;
     
     const mainLabels = [
       { key: 'hook', patterns: [/hook[:\s-]+/i, /viral\s+hook[:\s-]+/i] },
@@ -335,6 +336,88 @@ export const PreviewModal = ({ isOpen, onClose, platform, content }: PreviewModa
             </div>
           </div>
         );
+      
+      case 'video highlights':
+      case 'highlights':
+        return (
+          <div className="bg-slate-900 text-white p-6 rounded-3xl w-full max-w-md shadow-2xl border border-slate-800 font-sans">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/20">
+                <ChevronRight size={24} fill="white" />
+              </div>
+              <div>
+                <h4 className="font-black text-sm uppercase tracking-wider">Video Editor's Cut</h4>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Viral Timestamps Detected</p>
+              </div>
+            </div>
+            <div className="space-y-4 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
+              {content.split('\n').filter(line => line.trim() && (line.includes('[') || line.includes('|'))).map((line, i) => (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  key={i} 
+                  className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-[10px] font-black font-mono border border-blue-500/30 group-hover:bg-blue-500 group-hover:text-white transition-all">
+                      {line.match(/\[(.*?)\]/)?.[1] || '00:00'}
+                    </span>
+                    <span className="text-xs font-extrabold text-slate-200 group-hover:text-white truncate">
+                      {line.split('|')[1]?.trim() || line.split('-')[1]?.trim() || 'Highlight Segment'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed group-hover:text-slate-300">
+                    {line.split('|')[2]?.trim() || line.split('-')[2]?.trim() || line.replace(/\[.*?\]/, '').trim()}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'seo blog post':
+      case 'blog':
+        return (
+          <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col font-sans mx-auto">
+            <div className="h-24 bg-gradient-to-br from-indigo-600 to-blue-700 p-6 flex flex-col justify-end">
+               <div className="flex items-center gap-2 text-[10px] font-bold text-white/70 uppercase tracking-widest">
+                 <FileText size={12} />
+                 <span>Blog Article Preview</span>
+               </div>
+            </div>
+            <div className="p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+                <div className="text-[11px]">
+                  <p className="font-bold">IndoRepurpose Writer</p>
+                  <p className="text-slate-400">5 min read · {new Date().toLocaleDateString('id-ID')}</p>
+                </div>
+              </div>
+              <div className="max-h-[350px] overflow-y-auto custom-scrollbar pr-2 prose dark:prose-invert prose-sm">
+                {content.includes('</h1>') || content.includes('</h2>') || content.includes('<p>') ? (
+                  <div 
+                    className="whitespace-pre-wrap text-slate-600 dark:text-slate-300 leading-relaxed text-[13px] blog-content-preview"
+                    dangerouslySetInnerHTML={{ 
+                      __html: content
+                        .replace(/Meta Description:/i, '<hr/><div class="text-[11px] mt-4 font-bold text-indigo-500 uppercase">Meta Description</div>')
+                        .replace(/Keywords:/i, '<div class="text-[11px] mt-2 font-bold text-indigo-500 uppercase">Keywords</div>')
+                    }}
+                  />
+                ) : (
+                  <div className="whitespace-pre-wrap text-slate-600 dark:text-slate-300 leading-relaxed text-[13px]">
+                    {content.split('\n').map((line, i) => {
+                      if (line.startsWith('#') || (line.toUpperCase() === line && line.length > 5 && line.length < 50)) {
+                        return <h3 key={i} className="text-slate-900 dark:text-white font-black text-lg mt-6 mb-3 tracking-tight leading-tight">{line.replace(/#/g, '')}</h3>;
+                      }
+                      return <p key={i} className="mb-4">{line}</p>;
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
 
       default:
         return <div className="p-8 text-center text-slate-500">Platform preview tidak tersedia.</div>;
@@ -366,19 +449,23 @@ export const PreviewModal = ({ isOpen, onClose, platform, content }: PreviewModa
               <CloseIcon size={28} />
             </button>
 
-            <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-h-[85vh] overflow-y-auto p-6 md:p-10 flex flex-col items-center gap-10 custom-scrollbar border border-slate-200 dark:border-slate-800 shadow-2xl">
-              <div className="w-full flex justify-center py-2">
-                {renderMockup()}
-              </div>
-              
-              <div className="max-w-md w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex gap-4 items-start mb-4">
-                 <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
-                    <Sparkles size={18} />
-                 </div>
-                 <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                   <span className="font-bold text-slate-700 dark:text-slate-200 block mb-1 text-[13px]">💡 Tips Kreator:</span>
-                   Pratinjau di atas hanyalah simulasi visual. Terkadang struktur teks dari AI bisa bervariasi, Anda tetap dapat menyesuaikan dan mengedit kembali konten ini sesuai kebutuhan sebelum benar-benar dipublikasikan ke platform pilihan Anda.
-                 </p>
+            <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-h-[85vh] flex flex-col border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+                <div className="flex flex-col items-center gap-10">
+                  <div className="w-full flex justify-center py-2">
+                    {renderMockup()}
+                  </div>
+                  
+                  <div className="max-w-md w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex gap-4 items-start mb-4">
+                     <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+                        <Sparkles size={18} />
+                     </div>
+                     <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                       <span className="font-bold text-slate-700 dark:text-slate-200 block mb-1 text-[13px]">💡 Tips Kreator:</span>
+                       Pratinjau di atas hanyalah simulasi visual. Terkadang struktur teks dari AI bisa bervariasi, Anda tetap dapat menyesuaikan dan mengedit kembali konten ini sesuai kebutuhan sebelum benar-benar dipublikasikan ke platform pilihan Anda.
+                     </p>
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -12,7 +12,7 @@ const steps = [
   },
   {
     title: 'Proses AI Magic',
-    description: 'AI kami menganalisis materi dan mengubahnya jadi 6 format berbeda secara instan.',
+    description: 'AI kami menganalisis materi dan mengubahnya jadi 8 format berbeda secara instan.',
     icon: Zap,
     color: 'bg-amber-500',
   },
@@ -54,7 +54,7 @@ export function HowItWorks() {
         >
           <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 font-display">Cara Kerja Kami</h2>
           <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-base md:text-lg leading-relaxed font-sans">
-            Hanya butuh 3 langkah praktis untuk menyulap satu video YouTube menjadi bermacam format konten yang siap viral.
+            Hanya butuh 3 langkah praktis untuk menyulap satu video YouTube menjadi 8 format konten yang siap viral.
           </p>
         </motion.div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye } from 'lucide-react';
 import { processContent, getHistory, deleteHistory } from './actions';
@@ -30,6 +30,8 @@ interface HistoryItem {
     tiktok: string;
     newsletter: string;
     threads: string;
+    highlights: string;
+    blog: string;
   };
 }
 
@@ -38,12 +40,14 @@ export default function Home() {
   const [mode, setMode] = useState<'url' | 'text'>('url');
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [results, setResults] = useState<{ x: string, linkedin: string, instagram: string, tiktok: string, newsletter: string, threads: string } | null>(null);
+  const [results, setResults] = useState<{ x: string, linkedin: string, instagram: string, tiktok: string, newsletter: string, threads: string, highlights: string, blog: string } | null>(null);
   const [error, setError] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [tone, setTone] = useState<string>('professional');
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<{ platform: string, content: string }>({ platform: '', content: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean, id: string }>({ show: false, id: '' });
+  const resultsRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchHistory();
@@ -86,19 +90,31 @@ export default function Home() {
 
   const deleteHistoryItem = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    setDeleteConfirm({ show: true, id });
+  };
+
+  const confirmDelete = async () => {
+    const { id } = deleteConfirm;
     const res = await deleteHistory(id);
     if (res.success) {
       setHistory(prev => prev.filter(item => item.id !== id));
-      toast.info('Item dihapus dari histori');
+      toast.info('Proyek berhasil dihapus');
     }
+    setDeleteConfirm({ show: false, id: '' });
   };
 
   const loadFromHistory = (item: HistoryItem) => {
     setInput(item.input);
     setMode(item.mode);
+    setTone(item.tone); // Add this to sync tone
     setResults(item.results);
-    window.scrollTo({ top: 500, behavior: 'smooth' });
-    toast.info('Data dimuat dari histori');
+    
+    // Smooth scroll to results
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    
+    toast.info('Proyek dimuat dari arsip');
   };
 
   const copyToClipboard = (text: string, title: string) => {
@@ -310,7 +326,7 @@ export default function Home() {
         <div id="results" className="relative z-10">
           <AnimatePresence>
             {results && (
-              <section className="py-32 px-6 transition-colors duration-500">
+              <section ref={resultsRef} className="py-32 px-6 transition-colors duration-500 scroll-mt-24">
                 <div className="container mx-auto max-w-7xl">
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -393,6 +409,28 @@ export default function Home() {
                         setShowPreview(true);
                       }}
                     />
+                    <ResultCard 
+                      index={6}
+                      title="Video Highlights" 
+                      icon={<YoutubeIcon className="text-red-600" />} 
+                      content={results.highlights} 
+                      onCopy={() => copyToClipboard(results.highlights, "Video Highlights")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'Highlights', content: results.highlights });
+                        setShowPreview(true);
+                      }}
+                    />
+                    <ResultCard 
+                      index={7}
+                      title="SEO Blog Post" 
+                      icon={<FileText className="text-indigo-600" />} 
+                      content={results.blog} 
+                      onCopy={() => copyToClipboard(results.blog, "SEO Blog Post")}
+                      onPreview={() => {
+                        setPreviewData({ platform: 'Blog', content: results.blog });
+                        setShowPreview(true);
+                      }}
+                    />
                   </div>
                 </div>
               </section>
@@ -401,11 +439,54 @@ export default function Home() {
         </div>
 
         <PreviewModal 
-          isOpen={showPreview}
-          onClose={() => setShowPreview(false)}
-          platform={previewData.platform}
-          content={previewData.content}
-        />
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        platform={previewData.platform}
+        content={previewData.content}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm.show && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteConfirm({ show: false, id: '' })}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white dark:bg-slate-900 rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center text-red-600 dark:text-red-400 mx-auto mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Hapus Proyek?</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
+                Tindakan ini tidak dapat dibatalkan. Data proyek ini akan dihapus permanen dari arsip Anda.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setDeleteConfirm({ show: false, id: '' })}
+                  className="flex-1 px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 px-6 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-500/20 transition-colors"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
         <HowItWorks />
 
@@ -463,41 +544,41 @@ export default function Home() {
                       transition: { type: "spring", stiffness: 400, damping: 25 }
                     }}
                     onClick={() => loadFromHistory(item)}
-                    className="group relative backdrop-blur-md hover:backdrop-blur-none bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] hover:bg-white dark:hover:bg-slate-900 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 w-full max-w-full overflow-hidden"
+                    className="group relative backdrop-blur-md hover:backdrop-blur-none bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-4 md:p-5 rounded-2xl md:rounded-[2rem] hover:bg-white dark:hover:bg-slate-900 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-5 w-full max-w-full overflow-hidden"
                   >
-                    <div className="flex items-center gap-4 md:gap-6 w-full">
+                    <div className="flex items-center gap-3 md:gap-5 w-full">
                       <div className={cn(
-                        "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3",
+                        "w-10 h-10 md:w-13 md:h-13 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3",
                         item.mode === 'url' ? "bg-red-50 dark:bg-red-500/10 text-red-600" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600"
                       )}>
-                        {item.mode === 'url' ? <YoutubeIcon size={32} /> : <FileText size={32} />}
+                        {item.mode === 'url' ? <YoutubeIcon size={24} /> : <FileText size={24} />}
                       </div>
-                      <div className="min-w-0 flex-1 group/text pb-1">
-                        <p className="font-extrabold text-lg md:text-2xl text-slate-900 dark:text-white truncate font-display mb-1 md:mb-2 max-w-full">
+                      <div className="min-w-0 flex-1 group/text">
+                        <p className="font-extrabold text-base md:text-xl text-slate-900 dark:text-white truncate font-display mb-1 max-w-full">
                           {item.input}
                         </p>
-                        <div className="flex items-center gap-3 w-fit">
-                          <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.25em] px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-sans shadow-sm leading-none">
+                        <div className="flex items-center gap-2 w-fit">
+                          <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-md md:rounded-lg bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-sans shadow-sm leading-none">
                             {item.mode === 'url' ? 'YouTube' : 'Artikel'}
                           </span>
-                          <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.25em] px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-sans shadow-sm leading-none capitalize">
+                          <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-md md:rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-sans shadow-sm leading-none capitalize">
                             {item.tone}
                           </span>
-                          <span className="text-xs md:text-sm font-bold text-slate-400 font-sans">
-                            {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          <span className="text-[10px] md:text-xs font-bold text-slate-400 font-sans ml-1">
+                            {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button 
                         onClick={(e) => deleteHistoryItem(item.id, e)}
-                        className="p-5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all duration-300"
+                        className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-300"
                         title="Hapus Proyek"
                       >
-                        <Trash2 size={26} />
+                        <Trash2 size={20} />
                       </button>
-                      <ArrowUpRight size={32} className="text-slate-200 group-hover:text-blue-600 group-hover:translate-x-2 group-hover:-translate-y-2 transition-all duration-500" />
+                      <ArrowUpRight size={24} className="text-slate-200 group-hover:text-blue-600 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-500" />
                     </div>
                   </motion.div>
                 ))}
@@ -541,25 +622,25 @@ function ResultCard({ title, icon, content, onCopy, onPreview, index }: any) {
       transition={{ delay: index * 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const }}
       className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-2xl md:rounded-3xl border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 overflow-hidden group glow-blue"
     >
-      <div className="p-5 md:p-6 lg:p-8 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
+      <div className="p-4 md:p-5 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
         <div className="flex items-center gap-3 md:gap-4 font-extrabold text-slate-900 dark:text-white font-display">
-          <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm transition-transform duration-500 group-hover:scale-110 group-hover:rotate-2">
+          <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl md:rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm transition-transform duration-500 group-hover:scale-110 group-hover:rotate-2">
             {icon}
           </div>
-          <span className="text-lg md:text-xl tracking-tight">{title}</span>
+          <span className="text-base md:text-lg tracking-tight">{title}</span>
         </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={onPreview}
-            className="p-3 bg-white/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all duration-300 border border-slate-100 dark:border-slate-700"
+            className="p-2.5 bg-white/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all duration-300 border border-slate-100 dark:border-slate-700"
             title="Lihat Preview"
           >
-            <Eye size={20} />
+            <Eye size={18} />
           </button>
           <button 
             onClick={handleCopy}
             className={cn(
-              "p-3 rounded-xl transition-all duration-300 active:scale-90 border shadow-md",
+              "p-2.5 rounded-xl transition-all duration-300 active:scale-90 border shadow-md",
               copied 
                 ? "bg-emerald-500 text-white border-emerald-400" 
                 : "bg-white dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700 hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white"
@@ -570,15 +651,15 @@ function ResultCard({ title, icon, content, onCopy, onPreview, index }: any) {
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
               >
-                <Check size={20} />
+                <Check size={18} />
               </motion.div>
             ) : (
-              <Copy size={20} />
+              <Copy size={18} />
             )}
           </button>
         </div>
       </div>
-      <div className="p-6 md:p-8 lg:p-10 flex-1 whitespace-pre-wrap text-sm md:text-base leading-relaxed text-slate-600 dark:text-slate-300 overflow-auto max-h-[400px] md:max-h-[500px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 font-sans font-medium">
+      <div className="p-5 md:p-6 flex-1 whitespace-pre-wrap text-sm md:text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 overflow-auto max-h-[400px] md:max-h-[500px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 font-sans font-medium">
         {content}
       </div>
     </motion.div>

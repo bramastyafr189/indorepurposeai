@@ -15,6 +15,7 @@ import { HowItWorks } from '@/components/HowItWorks';
 import { Pricing } from '@/components/Pricing';
 import { Footer } from '@/components/Footer';
 import { HistorySkeleton } from '@/components/HistorySkeleton';
+import { AuthModal } from '@/components/AuthModal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,7 @@ export default function Home() {
   const [previewData, setPreviewData] = useState<{ platform: string, content: string }>({ platform: '', content: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean, id: string }>({ show: false, id: '' });
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [ticketForm, setTicketForm] = useState({ subject: '', message: '' });
   const [ticketLoading, setTicketLoading] = useState(false);
@@ -112,6 +114,13 @@ export default function Home() {
 
   const handleProcess = async () => {
     if (!input) return;
+
+    // Check for Login
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setLoading(true);
     setError('');
     setResults(null);
@@ -1018,6 +1027,11 @@ export default function Home() {
       </main>
 
       <Footer />
+      
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
     </div>
   );
 }

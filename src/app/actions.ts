@@ -4,6 +4,59 @@ import { getYoutubeTranscript } from "@/lib/youtube";
 import { getArticleContent } from "@/lib/scraper";
 import { repurposeAllContent } from "@/lib/gemini";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
+
+/**
+ * Send notification to Telegram Admin
+ */
+async function sendTelegramNotification(text: string, photoUrl?: string, buttonUrl?: string, buttonText?: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+  if (!token || !chatId) {
+    console.warn('[Telegram] Token or Chat ID not found in .env');
+    return;
+  }
+
+  try {
+    const endpoint = photoUrl ? 'sendPhoto' : 'sendMessage';
+    const url = `https://api.telegram.org/bot${token}/${endpoint}`;
+    
+    const payload: any = {
+      chat_id: chatId,
+      parse_mode: 'HTML',
+    };
+
+    if (photoUrl) {
+      payload.photo = photoUrl;
+      payload.caption = text;
+    } else {
+      payload.text = text;
+    }
+
+    // Add button if URL is provided
+    if (buttonUrl && buttonText) {
+      payload.reply_markup = {
+        inline_keyboard: [
+          [{ text: buttonText, url: buttonUrl }]
+        ]
+      };
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    if (!result.ok) {
+      console.error('[Telegram Error]:', result.description);
+    }
+  } catch (err) {
+    console.error('[Telegram Fetch Error]:', err);
+  }
+}
 
 export async function processContent(input: string, mode: 'url' | 'text', tone: string = "professional") {
   const supabase = await createClient();
@@ -534,8 +587,6 @@ async function cleanupTransactions() {
   }
 }
 
-import { createAdminClient } from "@/utils/supabase/admin";
-
 export async function getAdminStats() {
   const supabase = await createClient();
   const isAdmin = await checkIsAdmin(supabase);
@@ -689,13 +740,47 @@ export async function getAllHistoryAdmin() {
 
 export async function updateTransactionProof(transactionId: string, proofUrl: string) {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
+  
   try {
+    // 1. Update proof_url and status to verifying
     const { error } = await supabase
       .from('transactions')
-      .update({ proof_url: proofUrl })
+      .update({ 
+        proof_url: proofUrl,
+        status: 'verifying'
+      })
       .eq('id', transactionId);
 
     if (error) throw error;
+
+    // 2. Get Transaction & User Detail for Telegram
+    const { data: tx } = await adminSupabase
+      .from('transactions')
+      .select('*, profiles(email)')
+      .eq('id', transactionId)
+      .single();
+
+    if (tx) {
+      const amount = (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID');
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const adminLink = `${siteUrl}/admin`;
+      
+      const message = `
+<b>🔔 Bukti Bayar Baru!</b>
+━━━━━━━━━━━━━━━━━━
+<b>User:</b> ${tx.profiles?.email || 'Unknown'}
+<b>Paket:</b> ${tx.plan_name}
+<b>Total:</b> Rp ${amount}
+<b>ID:</b> <code>${transactionId}</code>
+
+<i>Silakan cek mutasi dan konfirmasi melalui tombol di bawah.</i>
+      `;
+      
+      // Send to Telegram with Button
+      await sendTelegramNotification(message, proofUrl, adminLink, '👉 Buka Dashboard Admin');
+    }
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

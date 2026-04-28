@@ -49,6 +49,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
       });
       if (error) throw error;
@@ -91,7 +94,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       <ShieldCheck className="text-white" size={24} />
                     </div>
                     <h2 className="text-2xl font-black font-display text-slate-900 dark:text-white uppercase tracking-tight italic">
-                      Masuk <span className="text-blue-600">Terpurpos</span>
+                      Masuk <span className="text-blue-600">IndoRepurpose</span>
                     </h2>
                   </div>
                   <button 

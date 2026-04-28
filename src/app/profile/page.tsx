@@ -7,7 +7,8 @@ import {
   CreditCard, ArrowLeft, Loader2, CheckCircle2, 
   Clock, ChevronRight, Check, X, Download, Copy,
   Wallet, Smartphone, Banknote, AlertCircle, ExternalLink,
-  Upload, MessageSquare, Loader2 as LoaderIcon
+  Upload, MessageSquare, Loader2 as LoaderIcon,
+  LifeBuoy
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -96,6 +97,26 @@ export default function ProfilePage() {
     }
   }, [profile?.pendingTransaction]);
 
+  // Realtime listener for Admin updates
+  useEffect(() => {
+    if (profile?.id) {
+      const channel = supabase
+        .channel(`user-updates:${profile.id}`)
+        .on('broadcast', { event: 'profile-updated' }, () => {
+          console.log('Profile updated by Admin, reloading...');
+          loadData();
+          toast.success('Status akun Anda telah diperbarui!', {
+            description: 'Perubahan paket atau kredit telah diterapkan.'
+          });
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [profile?.id]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 font-sans">
@@ -161,6 +182,13 @@ export default function ProfilePage() {
 
       const res = await updateTransactionProof(profile.pendingTransaction.id, publicUrl);
       if (res.success) {
+        // Broadcast to Admin
+        supabase.channel('admin-global-updates').send({
+          type: 'broadcast',
+          event: 'new-transaction',
+          payload: { order_id: profile.pendingTransaction.order_id, type: 'proof_upload_profile' }
+        });
+
         toast.success('Bukti transfer berhasil diunggah!');
         loadData(); // Refresh profile to show proof
       } else {
@@ -174,15 +202,9 @@ export default function ProfilePage() {
     }
   };
 
-  const openWhatsApp = () => {
+  const openSupportTicket = () => {
     if (!profile?.pendingTransaction) return;
-    const tx = profile.pendingTransaction;
-    openWhatsAppSupport({
-      plan: tx.plan_name,
-      email: profile.email || 'User',
-      orderId: tx.order_id,
-      amount: (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')
-    });
+    router.push(`/?support=true&orderId=${profile.pendingTransaction.order_id}`);
   };
 
   const handlePrint = () => {
@@ -431,10 +453,10 @@ export default function ProfilePage() {
 
                                 {showWAHelp && (
                                   <button 
-                                    onClick={openWhatsApp}
-                                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                                    onClick={openSupportTicket}
+                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
                                   >
-                                    <MessageSquare size={18} /> Hubungi Admin via WA
+                                    <LifeBuoy size={18} /> Hubungi Admin via Tiket
                                   </button>
                                 )}
                               </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react';
 import { processContent, getHistory, deleteHistory, createTicket, getTickets, getTicketMessages, sendTicketMessage } from './actions';
@@ -78,13 +79,26 @@ export default function Home() {
 
   useEffect(() => {
     fetchHistory();
+    
     const fetchUser = async () => {
-      const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
     };
     fetchUser();
+
+    // Auto-open support from URL parameter
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('support') === 'true') {
+      setShowSupportModal(true);
+      const orderId = params.get('orderId');
+      if (orderId) {
+        setTicketForm(prev => ({ 
+          ...prev, 
+          subject: `Konfirmasi Pembayaran #${orderId.slice(-8)}` 
+        }));
+      }
+    }
   }, []);
 
   const fetchHistory = async () => {
@@ -165,6 +179,14 @@ export default function Home() {
     setTicketLoading(true);
     const res = await createTicket(ticketForm.subject, ticketForm.message);
     if (res.success) {
+      // Broadcast to Admin
+      const supabase = createClient();
+      supabase.channel('admin-global-updates').send({
+        type: 'broadcast',
+        event: 'new-ticket',
+        payload: { subject: ticketForm.subject }
+      });
+
       toast.success('Aduan berhasil dikirim', {
         description: 'Tim kami akan segera memproses laporan Anda.'
       });
@@ -203,6 +225,14 @@ export default function Home() {
     setTicketLoading(true);
     const res = await sendTicketMessage(selectedTicketId, replyMessage);
     if (res.success) {
+      // Broadcast to Admin
+      const supabase = createClient();
+      supabase.channel(`chat:${selectedTicketId}`).send({
+        type: 'broadcast',
+        event: 'new-chat-message',
+        payload: { text: replyMessage }
+      });
+
       setReplyMessage("");
       setIsWaitingForAdmin(true); // Immediate lockout
       loadTicketMessages(selectedTicketId);
@@ -211,6 +241,31 @@ export default function Home() {
     }
     setTicketLoading(false);
   };
+
+  useEffect(() => {
+    if (selectedTicketId) {
+      const supabase = createClient();
+      const channel = supabase
+        .channel(`chat:${selectedTicketId}`) // Changed to match admin channel name exactly
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_messages',
+          filter: `ticket_id=eq.${selectedTicketId}`
+        }, () => {
+          loadTicketMessages(selectedTicketId);
+        })
+        .on('broadcast', { event: 'new-chat-message' }, () => {
+          console.log('New chat message broadcast received by User');
+          loadTicketMessages(selectedTicketId);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [selectedTicketId]);
 
   const copyToClipboard = (text: string, title: string) => {
     navigator.clipboard.writeText(text);
@@ -846,18 +901,20 @@ export default function Home() {
 
         <Pricing />
 
-        {/* Cloud History Section */}
         <section id="history" className="py-24 md:py-32 px-4 sm:px-6 relative z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500 w-full">
           <div className="container mx-auto max-w-5xl w-full">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex items-center justify-between mb-12 md:mb-20"
+              className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-20"
             >
               <div>
-                <h2 className="text-3xl md:text-4xl font-extrabold mb-3 font-display text-slate-900 dark:text-white">Arsip Proyek</h2>
-                <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-sans font-medium">Riwayat transformasi Anda tersimpan aman di cloud.</p>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest mb-4 border border-blue-100 dark:border-blue-800/50">
+                  <HistoryIcon size={14} /> Cloud Storage
+                </div>
+                <h2 className="text-3xl md:text-5xl font-extrabold mb-3 font-display tracking-tight text-slate-900 dark:text-white">Arsip Proyek</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-sans font-medium">Lihat dan ambil kembali hasil transformasi konten Anda sebelumnya.</p>
               </div>
             </motion.div>
 
@@ -872,67 +929,73 @@ export default function Home() {
                   hidden: {},
                   visible: { transition: { staggerChildren: 0.1 } }
                 }}
-                className="grid gap-5 md:gap-6 w-full"
+                className="grid gap-6 w-full"
               >
                 {history.map((item, index) => (
                   <motion.div 
                     key={item.id}
                     variants={{
-                      hidden: { opacity: 0, scale: 0.95 },
-                      visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } }
-                    }}
-                    animate={{ 
-                      y: [0, -4, 0],
-                    }}
-                    transition={{
-                      y: {
-                        duration: 5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: index * 0.4
-                      }
-                    }}
-                    whileHover={{ 
-                      y: -10, 
-                      scale: 1.02,
-                      transition: { type: "spring", stiffness: 400, damping: 25 }
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
                     }}
                     onClick={() => loadFromHistory(item)}
-                    className="group relative backdrop-blur-md hover:backdrop-blur-none bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 p-4 md:p-5 rounded-2xl md:rounded-[2rem] hover:bg-white dark:hover:bg-slate-900 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-5 w-full max-w-full overflow-hidden"
+                    className="group relative bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-6 md:p-8 rounded-[2.5rem] hover:border-blue-500/50 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col gap-6"
                   >
-                    <div className="flex items-center gap-3 md:gap-5 w-full">
-                      <div className={cn(
-                        "w-10 h-10 md:w-13 md:h-13 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3",
-                        item.mode === 'url' ? "bg-red-50 dark:bg-red-500/10 text-red-600" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600"
-                      )}>
-                        {item.mode === 'url' ? <YoutubeIcon size={24} /> : <FileText size={24} />}
-                      </div>
-                      <div className="min-w-0 flex-1 group/text">
-                        <p className="font-extrabold text-base md:text-xl text-slate-900 dark:text-white truncate font-display mb-1 max-w-full">
-                          {item.input}
-                        </p>
-                        <div className="flex items-center gap-2 w-fit">
-                          <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-md md:rounded-lg bg-slate-200/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-sans shadow-sm leading-none">
-                            {item.mode === 'url' ? 'YouTube' : 'Artikel'}
-                          </span>
-                          <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-md md:rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-sans shadow-sm leading-none capitalize">
-                            {item.tone}
-                          </span>
-                          <span className="text-[10px] md:text-xs font-bold text-slate-400 font-sans ml-1">
-                            {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                          </span>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex items-center gap-5">
+                        <div className={cn(
+                          "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-500",
+                          item.mode === 'url' ? "bg-red-50 dark:bg-red-500/10 text-red-600" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600"
+                        )}>
+                          {item.mode === 'url' ? <YoutubeIcon size={28} /> : <FileText size={28} />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={cn(
+                              "text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg",
+                              item.mode === 'url' ? "bg-red-100 dark:bg-red-900/20 text-red-600" : "bg-blue-100 dark:bg-blue-900/20 text-blue-600"
+                            )}>
+                              {item.mode === 'url' ? 'YouTube Video' : 'Original Text'}
+                            </span>
+                            <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">
+                              {item.tone}
+                            </span>
+                          </div>
+                          <h3 className="font-black text-xl text-slate-900 dark:text-white truncate max-w-[280px] md:max-w-md">
+                            {item.input}
+                          </h3>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button 
-                        onClick={(e) => deleteHistoryItem(item.id, e)}
-                        className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-300"
-                        title="Hapus Proyek"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                      <ArrowUpRight size={24} className="text-slate-200 group-hover:text-blue-600 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-500" />
+
+                      <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-6 md:pt-0 border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <div className="flex -space-x-2">
+                            {item.results.x && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900" title="X Post"><TwitterIcon size={12} /></div>}
+                            {item.results.linkedin && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900" title="LinkedIn"><LinkedinIcon size={12} /></div>}
+                            {item.results.instagram && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900" title="Instagram"><InstagramIcon size={12} /></div>}
+                            {item.results.tiktok && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900" title="TikTok"><TiktokIcon size={12} /></div>}
+                            {item.results.blog && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900" title="Blog"><FileText size={12} /></div>}
+                          </div>
+                          <span className="text-[10px] font-black text-slate-400 ml-2 uppercase tracking-tighter">
+                            {Object.values(item.results).filter(Boolean).length} Platforms
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="hidden md:block text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">
+                            {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                          <button 
+                            onClick={(e) => deleteHistoryItem(item.id, e)}
+                            className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-300"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                          <div className="w-11 h-11 flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                            <ArrowUpRight size={20} />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -943,7 +1006,7 @@ export default function Home() {
                 whileInView={{ opacity: 1 }}
                 className="text-center py-40 bg-slate-50/50 dark:bg-slate-900/30 rounded-[4rem] border-2 border-dashed border-slate-200 dark:border-slate-800"
               >
-                <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
+                <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-10 shadow-xl">
                   <HistoryIcon size={48} className="text-slate-300" />
                 </div>
                 <h3 className="text-3xl font-extrabold text-slate-400 font-display">Belum Ada Proyek</h3>

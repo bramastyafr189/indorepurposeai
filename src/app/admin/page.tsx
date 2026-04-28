@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -31,7 +32,8 @@ import {
   TrendingUp,
   Newspaper as NewsletterIcon,
   Sparkles as HighlightsIcon,
-  BookOpen as BlogIcon
+  BookOpen as BlogIcon,
+  Edit
 } from 'lucide-react';
 import { 
   Instagram as InstagramIcon,
@@ -53,7 +55,8 @@ import {
   getAllTicketsAdmin,
   updateTicketStatus,
   getTicketMessages,
-  sendTicketMessage
+  sendTicketMessage,
+  updateUserAdmin
 } from '../actions';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -74,13 +77,25 @@ export default function AdminDashboard() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [ticketMessages, setTicketMessages] = useState<any[]>([]);
   const [replyMessage, setReplyMessage] = useState("");
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ credits: 0, plan_name: '', plan_expires_at: '' });
+  const [updating, setUpdating] = useState(false);
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'created_at', direction: 'desc' });
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<string>('connecting');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedFetchData = () => {
+    if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    fetchTimeoutRef.current = setTimeout(() => {
+      fetchData();
+    }, 3000); // Wait 3 seconds of "silence" before fetching
+  };
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -89,18 +104,32 @@ export default function AdminDashboard() {
   }, [ticketMessages]);
 
   useEffect(() => {
-    let interval: any;
     if (selectedTicketId) {
-      interval = setInterval(() => {
-        loadMessages(selectedTicketId);
-      }, 30000); // 30 seconds for chat
+      const supabase = createClient();
+      const channel = supabase
+        .channel(`chat:${selectedTicketId}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_messages',
+          filter: `ticket_id=eq.${selectedTicketId}`
+        }, () => {
+          loadMessages(selectedTicketId);
+        })
+        .on('broadcast', { event: 'new-chat-message' }, () => {
+          console.log('New chat message broadcast received');
+          loadMessages(selectedTicketId);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-    return () => clearInterval(interval);
   }, [selectedTicketId]);
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { createClient } = await import('@/utils/supabase/client');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
@@ -108,12 +137,48 @@ export default function AdminDashboard() {
     fetchUser();
     fetchData();
 
-    // Global Auto-Refresh every 2 minutes for main dashboard data
-    const globalInterval = setInterval(() => {
-      fetchData();
-    }, 120000);
+    // Supabase Realtime for Global Updates
+    const supabaseClient = createClient();
+    const globalChannel = supabaseClient
+      .channel('admin-global-updates')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'tickets' 
+      }, (payload) => {
+        console.log('Realtime Ticket Change:', payload);
+        debouncedFetchData();
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'transactions' 
+      }, (payload) => {
+        console.log('Realtime Transaction Change:', payload);
+        debouncedFetchData();
+      })
+      .on('broadcast', { event: 'new-ticket' }, (payload) => {
+        console.log('Broadcast New Ticket Received:', payload);
+        debouncedFetchData();
+      })
+      .on('broadcast', { event: 'new-transaction' }, (payload) => {
+        console.log('Broadcast New Transaction Received:', payload);
+        debouncedFetchData();
+      })
+      .subscribe((status) => {
+        console.log('Admin Realtime Status:', status);
+        setRealtimeStatus(status);
+      });
 
-    return () => clearInterval(globalInterval);
+    // Fallback polling every 5 minutes just in case
+    const fallbackInterval = setInterval(() => {
+      fetchData();
+    }, 300000);
+
+    return () => {
+      supabaseClient.removeChannel(globalChannel);
+      clearInterval(fallbackInterval);
+    };
   }, []);
 
   // Payment Method Mapping for Admin Display
@@ -158,10 +223,18 @@ export default function AdminDashboard() {
     if (!confirm('Setujui transaksi ini?')) return;
     setProcessingId(id);
     const res = await approveTransaction(id);
-    if (res.success) {
+    if (res.success && res.userId) {
+      // Broadcast to specific user
+      const supabase = createClient();
+      supabase.channel(`user-updates:${res.userId}`).send({
+        type: 'broadcast',
+        event: 'profile-updated',
+        payload: { status: 'success' }
+      });
+
       toast.success('Disetujui!');
       fetchData(); // Refresh all to update stats
-    } else {
+    } else if (!res.success) {
       toast.error(res.error);
     }
     setProcessingId(null);
@@ -171,10 +244,18 @@ export default function AdminDashboard() {
     if (!confirm('Tolak transaksi ini?')) return;
     setProcessingId(id);
     const res = await rejectTransaction(id);
-    if (res.success) {
+    if (res.success && res.userId) {
+      // Broadcast to specific user
+      const supabase = createClient();
+      supabase.channel(`user-updates:${res.userId}`).send({
+        type: 'broadcast',
+        event: 'profile-updated',
+        payload: { status: 'rejected' }
+      });
+
       toast.info('Ditolak');
       fetchData();
-    } else {
+    } else if (!res.success) {
       toast.error(res.error);
     }
     setProcessingId(null);
@@ -204,6 +285,14 @@ export default function AdminDashboard() {
     setProcessingId(selectedTicketId);
     const res = await sendTicketMessage(selectedTicketId, replyMessage);
     if (res.success) {
+      // Broadcast to User
+      const supabase = createClient();
+      supabase.channel(`chat:${selectedTicketId}`).send({
+        type: 'broadcast',
+        event: 'new-chat-message',
+        payload: { text: replyMessage }
+      });
+
       setReplyMessage("");
       loadMessages(selectedTicketId);
       toast.success("Balasan terkirim");
@@ -211,6 +300,25 @@ export default function AdminDashboard() {
       toast.error(res.error);
     }
     setProcessingId(null);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+    setUpdating(true);
+    const res = await updateUserAdmin(selectedUser.id, {
+      credits: editForm.credits,
+      plan_name: editForm.plan_name,
+      plan_expires_at: editForm.plan_expires_at || null
+    });
+    
+    if (res.success) {
+      toast.success('User berhasil diupdate');
+      setSelectedUser(null);
+      fetchData();
+    } else {
+      toast.error(res.error || 'Gagal update user');
+    }
+    setUpdating(false);
   };
 
   const handleSort = (key: string) => {
@@ -264,7 +372,22 @@ export default function AdminDashboard() {
               <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white font-display tracking-tight">Admin Dashboard</h1>
             </div>
             
-            <div className="flex items-center gap-3 w-full lg:w-auto">
+            <div className="flex items-center gap-4 w-full lg:w-auto">
+              <div className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest",
+                realtimeStatus === 'SUBSCRIBED' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                realtimeStatus === 'connecting' ? "bg-amber-50 text-amber-600 border-amber-100" :
+                "bg-red-50 text-red-600 border-red-100"
+              )}>
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  realtimeStatus === 'SUBSCRIBED' ? "bg-emerald-500 animate-pulse" :
+                  realtimeStatus === 'connecting' ? "bg-amber-500 animate-bounce" :
+                  "bg-red-500"
+                )} />
+                {realtimeStatus === 'SUBSCRIBED' ? 'Live System' : 'Connecting...'}
+              </div>
+
               <div className="relative flex-1 lg:w-64">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input 
@@ -586,6 +709,19 @@ export default function AdminDashboard() {
                             {user.plan_name === 'Free' ? 'SELAMANYA' : user.plan_expires_at ? new Date(user.plan_expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
                           </p>
                         </div>
+                        <button 
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setEditForm({ 
+                              credits: user.credits, 
+                              plan_name: user.plan_name,
+                              plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString().split('T')[0] : ''
+                            });
+                          }}
+                          className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                        >
+                          <Edit size={14} /> Edit User
+                        </button>
                       </div>
                     ))}
                   </motion.div>
@@ -989,6 +1125,93 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {selectedUser && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedUser(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                  <Edit className="text-blue-600" /> Edit User Profile
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 font-medium">{selectedUser.email}</p>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Kredit</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input 
+                      type="number"
+                      value={editForm.credits}
+                      onChange={(e) => setEditForm({ ...editForm, credits: parseInt(e.target.value) || 0 })}
+                      className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Paket Layanan</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {['Free', 'Pro', 'Agency'].map((plan) => (
+                      <button
+                        key={plan}
+                        onClick={() => setEditForm({ ...editForm, plan_name: plan })}
+                        className={cn(
+                          "py-3 rounded-xl text-xs font-black transition-all border",
+                          editForm.plan_name === plan 
+                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20" 
+                            : "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-blue-500/30"
+                        )}
+                      >
+                        {plan}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Masa Aktif Paket (Opsional)</label>
+                  <input 
+                    type="date"
+                    value={editForm.plan_expires_at}
+                    onChange={(e) => setEditForm({ ...editForm, plan_expires_at: e.target.value })}
+                    className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="flex-1 py-4 bg-white dark:bg-slate-900 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200 dark:border-slate-800 hover:bg-slate-100 transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleUpdateUser}
+                  disabled={updating}
+                  className="flex-2 px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {updating ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                  Simpan Perubahan
+                </button>
               </div>
             </motion.div>
           </div>

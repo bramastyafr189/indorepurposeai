@@ -20,7 +20,8 @@ import {
   Clock,
   Upload,
   Image as ImageIcon,
-  Headphones
+  Headphones,
+  LifeBuoy
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -142,6 +143,13 @@ export default function CheckoutPage() {
     setLoading(true);
     const res = await initiateCheckout(planName, activePlan.price, selectedMethodId || undefined);
     if (res.success) {
+      // Broadcast to Admin for new transaction
+      supabase.channel('admin-global-updates').send({
+        type: 'broadcast',
+        event: 'new-transaction',
+        payload: { order_id: res.data.order_id, plan: planName }
+      });
+
       setTransaction(res.data);
       setStep('instructions');
     } else {
@@ -190,6 +198,13 @@ export default function CheckoutPage() {
 
       const res = await updateTransactionProof(transaction.id, publicUrl);
       if (res.success) {
+        // Broadcast to Admin for proof upload
+        supabase.channel('admin-global-updates').send({
+          type: 'broadcast',
+          event: 'new-transaction',
+          payload: { order_id: transaction.order_id, type: 'proof_upload' }
+        });
+
         toast.success('Bukti transfer berhasil diunggah!');
         setTransaction({ ...transaction, proof_url: publicUrl });
       } else {
@@ -203,13 +218,8 @@ export default function CheckoutPage() {
     }
   };
 
-  const openWhatsApp = () => {
-    openWhatsAppSupport({
-      plan: transaction.plan_name,
-      email: transaction.user_email || 'User',
-      orderId: transaction.order_id,
-      amount: (transaction.amount + (transaction.unique_code || 0)).toLocaleString('id-ID')
-    });
+  const openSupportTicket = () => {
+    router.push(`/?support=true&orderId=${transaction.order_id}`);
   };
 
   const handleCancel = async () => {
@@ -518,13 +528,13 @@ export default function CheckoutPage() {
                           )}
                         </div>
 
-                        {/* WhatsApp Support - Only visible after 1 hour */}
+                        {/* Support Ticket - Only visible after 1 hour */}
                         {showWAHelp && (
                           <button 
-                            onClick={openWhatsApp}
-                            className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2"
+                            onClick={openSupportTicket}
+                            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2"
                           >
-                            <MessageSquare size={16} /> Hubungi Admin via WA
+                            <LifeBuoy size={16} /> Hubungi Admin via Tiket
                           </button>
                         )}
                         

@@ -474,7 +474,7 @@ export async function approveTransaction(transactionId: string) {
 
     if (statusError) throw statusError;
 
-    return { success: true };
+    return { success: true, userId: tx.user_id };
   } catch (error: any) {
     console.error('Approve Error:', error);
     return { success: false, error: error.message };
@@ -492,15 +492,45 @@ export async function rejectTransaction(transactionId: string) {
   const adminSupabase = createAdminClient();
 
   try {
+    const { data: tx, error: txError } = await adminSupabase
+      .from('transactions')
+      .select('user_id')
+      .eq('id', transactionId)
+      .single();
+
     const { error } = await adminSupabase
       .from('transactions')
       .update({ status: 'rejected' })
       .eq('id', transactionId);
 
     if (error) throw error;
-    return { success: true };
+    return { success: true, userId: tx?.user_id };
   } catch (error: any) {
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Automatically cleanup transactions that are pending for more than 24 hours.
+ */
+async function cleanupTransactions() {
+  const adminSupabase = createAdminClient();
+  const yesterday = new Date();
+  yesterday.setHours(yesterday.getHours() - 24);
+
+  try {
+    const { count, error } = await adminSupabase
+      .from('transactions')
+      .delete({ count: 'exact' })
+      .eq('status', 'pending')
+      .lt('created_at', yesterday.toISOString());
+    
+    if (error) throw error;
+    if (count && count > 0) {
+      console.log(`[Cleanup] Deleted ${count} expired pending transactions.`);
+    }
+  } catch (err) {
+    console.error('[Cleanup Error]:', err);
   }
 }
 
@@ -510,6 +540,9 @@ export async function getAdminStats() {
   const supabase = await createClient();
   const isAdmin = await checkIsAdmin(supabase);
   if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  // Trigger lazy cleanup when admin visits dashboard
+  cleanupTransactions();
 
   // Use admin client to bypass RLS for stats
   const adminSupabase = createAdminClient();
@@ -599,6 +632,25 @@ export async function getAllUsers() {
 
     if (error) throw error;
     return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+export async function updateUserAdmin(userId: string, updates: { credits?: number, plan_name?: string, plan_expires_at?: string | null }) {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  const adminSupabase = createAdminClient();
+
+  try {
+    const { error } = await adminSupabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+
+    if (error) throw error;
+    return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

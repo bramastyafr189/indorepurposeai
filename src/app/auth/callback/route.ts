@@ -12,11 +12,13 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // i.e. vercel.com
-      const isLocalEnv = process.env.NODE_VERSION === 'development'
+      const forwardedHost = request.headers.get('x-forwarded-host')
+      const isLocalEnv = process.env.NODE_ENV === 'development' || origin.includes('localhost')
+      
       if (isLocalEnv) {
-        // we can be sure that origin is a secure localhost
-        return NextResponse.redirect(`${origin}${next}`)
+        // Force http for localhost to avoid ERR_SSL_PROTOCOL_ERROR
+        const httpOrigin = origin.replace('https://', 'http://')
+        return NextResponse.redirect(`${httpOrigin}${next}`)
       } else if (forwardedHost) {
         return NextResponse.redirect(`https://${forwardedHost}${next}`)
       } else {

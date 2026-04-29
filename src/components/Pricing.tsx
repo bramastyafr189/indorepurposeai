@@ -1,61 +1,81 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, Sparkles, Shield, HelpCircle, X, MessageSquare, Smartphone, Wallet } from 'lucide-react';
+import { Check, Sparkles, Shield, HelpCircle, Zap, Star, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import { initiateCheckout, getProfile } from '@/app/actions';
+import { getProfile } from '@/app/actions';
 
 const plans = [
-  {
-    name: 'Free',
-    price: '0',
+  { 
+    name: 'Free', 
+    price: '0', 
     description: 'Untuk mencoba keajaiban AI kami.',
     features: [
       '2 Kredit / Bulan',
-      'Semua Platform Sosial',
-      'Basic AI Engine',
-      'Arsip Proyek Publik',
+      '8 Format Konten Sosial',
+      'Akses Standar AI',
+      'Support Komunitas',
     ],
     cta: 'Mulai Gratis',
     highlight: false,
     icon: HelpCircle,
     color: 'slate',
+    badge: 'Uji Coba'
   },
-  {
-    name: 'Pro',
-    price: '299.000',
-    description: 'Pilihan terbaik untuk kreator serius.',
+  { 
+    name: 'Starter', 
+    price: '149.000', 
+    description: 'Cocok untuk kreator yang baru mulai.',
     features: [
-      'Kredit Tanpa Batas',
-      'Live Content Preview ✨',
-      'Dukungan Video YouTube',
-      'Brand Voice Tuning ✨',
-      'AI Engine Prioritas (Lebih Cepat)',
+      '15 Kredit / Bulan',
+      'Dukungan Link YouTube',
+      'Tanpa Tanda Air (Watermark)',
+      'AI Engine Versi 2.0',
+      'Support Email',
     ],
-    cta: 'Pilih Paket Pro',
+    cta: 'Pilih Starter',
+    highlight: false,
+    icon: Zap,
+    color: 'amber',
+    badge: 'Best Value'
+  },
+  { 
+    name: 'Plus', 
+    price: '299.000', 
+    description: 'Pilihan terbaik untuk kreator aktif.',
+    features: [
+      '50 Kredit / Bulan',
+      'Brand Voice Tuning ✨',
+      'Live Content Preview ✨',
+      'AI Engine Prioritas (Cepat)',
+      'Support Chat Prioritas',
+    ],
+    cta: 'Pilih Paket Plus',
     highlight: true,
     icon: Sparkles,
     color: 'blue',
+    badge: 'Paling Populer'
   },
-  {
-    name: 'Agency',
-    price: '749.000',
-    description: 'Sempurna untuk tim & agensi media.',
+  { 
+    name: 'Pro', 
+    price: '599.000', 
+    description: 'Untuk agensi & tim media besar.',
     features: [
-      'Semua Fitur Pro',
+      'Kredit Tanpa Batas',
       'Kelola Banyak Brand',
       'Akses API (Coming Soon)',
-      'Dukungan Prioritas 24/7',
-      'Kustomisasi Konten Lanjutan',
+      'Riset Keyword AI ✨',
+      'Dedicated Manager',
     ],
     cta: 'Hubungi Sales',
     highlight: false,
     icon: Shield,
     color: 'indigo',
+    badge: 'Enterprise'
   },
 ];
 
@@ -81,7 +101,6 @@ export function Pricing() {
       return;
     }
 
-    // Check for pending transactions to prevent duplicates
     const profileRes = await getProfile();
     if (profileRes.success && profileRes.data.pendingTransaction) {
       toast.error('Anda memiliki transaksi yang masih aktif. Mohon selesaikan atau batalkan terlebih dahulu di halaman profil.');
@@ -89,117 +108,136 @@ export function Pricing() {
       return;
     }
 
-    // Delay checkout initiation until the final confirmation step
     router.push(`/checkout/${plan.name}`);
   };
 
   return (
-    <section id="pricing" className="py-24 md:py-32 relative overflow-hidden z-10">
-      {/* Background decoration */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-[120px] -z-10" />
+    <section id="pricing" className="py-8 md:py-12 relative overflow-hidden z-10 bg-transparent flex flex-col justify-center min-h-[calc(100vh-80px)] transition-colors duration-500">
+      {/* Backdrop Blur Layer */}
+      <div className="absolute inset-0 backdrop-blur-[2px] pointer-events-none z-0" />
 
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-16 md:mb-24">
+      {/* Mesh Gradient Background - Intensified */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_85%,transparent)] z-0">
+        <div className="absolute -top-[5%] -left-[5%] w-[60%] h-[60%] bg-blue-400/30 dark:bg-blue-500/20 rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute top-[15%] -right-[5%] w-[50%] h-[50%] bg-purple-400/30 dark:bg-purple-500/20 rounded-full blur-[150px] animate-pulse delay-700" />
+        <div className="absolute -bottom-[5%] left-[15%] w-[60%] h-[60%] bg-emerald-400/30 dark:bg-emerald-500/20 rounded-full blur-[150px] animate-pulse delay-1000" />
+      </div>
+
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="text-center mb-6 md:mb-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-block px-4 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-6 font-black text-xs uppercase tracking-[0.3em]"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mb-4 border border-blue-100 dark:border-blue-800/50"
           >
-            Pricing Plans
+            <Star size={12} className="fill-current" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Pricing Strategy</span>
           </motion.div>
+          
           <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 font-display tracking-tight text-slate-900 dark:text-white"
+            className="text-4xl md:text-6xl font-black mb-4 tracking-tight text-slate-900 dark:text-white leading-[1.1]"
           >
             Investasi Untuk <br className="hidden sm:block" />
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Produktivitas Anda</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Produktivitas Anda</span>
           </motion.h2>
+          
           <motion.p 
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-sans"
+            className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-medium font-sans leading-relaxed"
           >
             Pilih paket yang sesuai dengan volume konten Anda dan mulai dominasi media sosial sekarang.
           </motion.p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-3 xl:gap-6 max-w-7xl mx-auto items-stretch">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.name}
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ y: -10 }}
+              transition={{ delay: index * 0.05, duration: 0.5 }}
+              whileHover={{ y: -5 }}
               className={cn(
-                "relative group p-8 rounded-[3rem] border transition-all duration-500 flex flex-col items-center text-center",
+                "relative p-6 md:p-7 rounded-[2.5rem] border transition-all duration-500 flex flex-col group h-full",
                 plan.highlight 
-                  ? "bg-white dark:bg-slate-900 border-blue-500/50 shadow-2xl shadow-blue-500/20 scale-105 z-20" 
-                  : "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 z-10"
+                  ? "bg-white dark:bg-slate-900 border-blue-500/50 shadow-xl shadow-blue-500/20 z-20" 
+                  : "bg-white/60 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 backdrop-blur-xl z-10"
               )}
             >
-              {plan.highlight && (
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-blue-500/20">
-                  Most Popular
+              {/* Badge */}
+              <div className="flex justify-between items-start mb-4">
+                <div className={cn(
+                  "px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border",
+                  plan.highlight 
+                    ? "bg-blue-600 text-white border-blue-500" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                )}>
+                  {plan.badge}
                 </div>
-              )}
-
-              <div className={cn(
-                "w-16 h-16 rounded-2xl flex items-center justify-center mb-8 shadow-lg",
-                plan.color === 'blue' ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-              )}>
-                <plan.icon size={32} />
+                {plan.highlight && <Zap size={18} className="text-blue-500 fill-current" />}
               </div>
 
-              <h3 className="text-2xl font-black mb-2 font-display text-slate-900 dark:text-white uppercase tracking-wider">{plan.name}</h3>
-              <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-xl font-black text-slate-400 dark:text-slate-500 font-display">Rp</span>
-                <span className="text-3xl lg:text-4xl font-black text-slate-900 dark:text-white font-display">{plan.price}</span>
-                <span className="text-slate-500 font-bold text-xs">/bulan</span>
+              {/* Icon & Name */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className={cn(
+                  "w-11 h-11 rounded-xl flex items-center justify-center shadow-md",
+                  plan.color === 'blue' ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                )}>
+                  <plan.icon size={22} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none">{plan.name}</h3>
+                  <p className="text-slate-400 text-[10px] font-bold mt-1">{plan.description}</p>
+                </div>
               </div>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 font-medium">{plan.description}</p>
 
-              <div className="w-full h-px bg-slate-100 dark:bg-slate-800 mb-8" />
+              {/* Price */}
+              <div className="mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-sm font-black text-slate-400">Rp</span>
+                  <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+                    {plan.price}
+                  </span>
+                  <span className="text-slate-500 font-bold text-[10px]">/bln</span>
+                </div>
+              </div>
 
-              <div className="flex flex-col gap-4 w-full mb-10 text-left flex-1">
+              {/* Features */}
+              <div className="flex flex-col gap-2.5 mb-8 flex-1">
                 {plan.features.map((feature) => (
-                  <div key={feature} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                      <Check size={12} className="text-blue-600 dark:text-blue-400" strokeWidth={3} />
+                  <div key={feature} className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <Check size={12} className="text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
                     </div>
-                    <span className="text-slate-600 dark:text-slate-300 text-sm font-bold font-sans">
+                    <span className="text-slate-600 dark:text-slate-300 text-[12px] font-bold leading-tight">
                       {feature}
                     </span>
                   </div>
                 ))}
               </div>
 
-              <button className={cn(
-                "w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300",
-                plan.highlight 
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 active:scale-95" 
-                  : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white active:scale-95"
-              )}
-              onClick={() => handlePurchase(plan)}
-            >
-              {plan.cta}
-            </button>
+              {/* CTA Button */}
+              <button 
+                onClick={() => handlePurchase(plan)}
+                className={cn(
+                  "w-full py-3.5 rounded-[1.2rem] font-black text-xs uppercase tracking-[0.15em] transition-all duration-300 flex items-center justify-center gap-2 group/btn",
+                  plan.highlight 
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20" 
+                    : "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                )}
+              >
+                <span>{plan.cta}</span>
+                <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+              </button>
             </motion.div>
           ))}
-        </div>
-
-        {/* FAQ Teaser */}
-        <div className="mt-20 text-center">
-          <p className="text-slate-500 dark:text-slate-500 text-sm font-bold uppercase tracking-widest">
-            Butuh paket kustom? <a href="#" className="text-blue-600 hover:underline">Hubungi kami melalui email.</a>
-          </p>
         </div>
       </div>
     </section>

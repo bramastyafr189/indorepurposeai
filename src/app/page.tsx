@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw } from 'lucide-react';
+import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw, Search } from 'lucide-react';
 import { processContent, getHistory, deleteHistory, createTicket, getTickets, getTicketMessages, sendTicketMessage } from './actions';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -12,6 +12,7 @@ import { PreviewModal } from '@/components/PreviewModal';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { HowItWorks } from '@/components/HowItWorks';
+import { TransformationShowcase } from '@/components/TransformationShowcase';
 import { Pricing } from '@/components/Pricing';
 import { Footer } from '@/components/Footer';
 import { HistorySkeleton } from '@/components/HistorySkeleton';
@@ -57,6 +58,9 @@ export default function Home() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [ticketMessages, setTicketMessages] = useState<any[]>([]);
   const [replyMessage, setReplyMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<'all' | 'url' | 'text'>('all');
+  const [displayLimit, setDisplayLimit] = useState(5);
   const resultsRef = React.useRef<HTMLDivElement>(null);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
 
@@ -282,6 +286,12 @@ export default function Home() {
       description: "Anda siap untuk mempostingnya!",
     });
   };
+
+  const filteredHistory = history.filter(item => {
+    const matchesSearch = item.input.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = activeFilter === 'all' || item.mode === activeFilter;
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-500 font-sans">
@@ -907,107 +917,204 @@ export default function Home() {
       </AnimatePresence>
 
         <HowItWorks />
+        <TransformationShowcase />
 
         <Pricing />
 
-        <section id="history" className="py-24 md:py-32 px-4 sm:px-6 relative z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500 w-full">
-          <div className="container mx-auto max-w-5xl w-full">
+        <section id="history" className="py-24 md:py-32 px-4 sm:px-6 relative overflow-hidden z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500 w-full flex flex-col justify-center min-h-[80vh]">
+          {/* Backdrop Blur Layer */}
+          <div className="absolute inset-0 backdrop-blur-[2px] pointer-events-none z-0" />
+
+          {/* Mesh Gradient Background */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_85%,transparent)] z-0">
+            <div className="absolute top-[10%] -left-[5%] w-[40%] h-[40%] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[150px] animate-pulse" />
+            <div className="absolute bottom-[10%] -right-[5%] w-[40%] h-[40%] bg-indigo-400/20 dark:bg-indigo-600/10 rounded-full blur-[150px] animate-pulse delay-1000" />
+          </div>
+
+          <div className="container mx-auto max-w-5xl w-full relative z-10">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-20"
+              className="text-center mb-12 md:mb-20"
             >
-              <div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest mb-4 border border-blue-100 dark:border-blue-800/50">
-                  <HistoryIcon size={14} /> Cloud Storage
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] mb-4 border border-blue-100 dark:border-blue-800/50">
+                <HistoryIcon size={14} /> Cloud Archive
+              </div>
+              <h2 className="text-4xl md:text-6xl font-black mb-4 tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+                Arsip <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Proyek Anda</span>
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-medium font-sans leading-relaxed">
+                Akses kembali semua hasil transformasi konten Anda yang tersimpan aman di cloud.
+              </p>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="flex flex-col md:flex-row items-center gap-4 mb-10"
+            >
+              <div className="relative flex-1 w-full group">
+                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                  <Search size={18} />
                 </div>
-                <h2 className="text-3xl md:text-5xl font-extrabold mb-3 font-display tracking-tight text-slate-900 dark:text-white">Arsip Proyek</h2>
-                <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-sans font-medium">Lihat dan ambil kembali hasil transformasi konten Anda sebelumnya.</p>
+                <input 
+                  type="text"
+                  placeholder="Cari judul video atau teks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-14 pl-14 pr-6 rounded-2xl bg-white/50 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 dark:focus:ring-blue-500/10 transition-all text-slate-700 dark:text-slate-200 font-medium"
+                />
+              </div>
+              
+              <div className="flex items-center p-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
+                <button 
+                  onClick={() => setActiveFilter('all')}
+                  className={cn(
+                    "flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                    activeFilter === 'all' ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                >
+                  Semua
+                </button>
+                <button 
+                  onClick={() => setActiveFilter('url')}
+                  className={cn(
+                    "flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                    activeFilter === 'url' ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                >
+                  YouTube
+                </button>
+                <button 
+                  onClick={() => setActiveFilter('text')}
+                  className={cn(
+                    "flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                    activeFilter === 'text' ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                >
+                  Teks
+                </button>
               </div>
             </motion.div>
 
             {historyLoading ? (
               <HistorySkeleton />
-            ) : history.length > 0 ? (
+            ) : filteredHistory.length > 0 ? (
+              <div className="space-y-6">
+                <div className="grid gap-6 w-full">
+                  <AnimatePresence mode="popLayout">
+                    {filteredHistory.slice(0, displayLimit).map((item) => (
+                      <motion.div 
+                        key={item.id}
+                        layout
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ 
+                          duration: 0.5,
+                          layout: { type: "spring", stiffness: 300, damping: 30 }
+                        }}
+                        onClick={() => loadFromHistory(item)}
+                        className="group relative bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 p-5 md:p-7 rounded-[2.5rem] hover:border-blue-500/50 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6"
+                      >
+                        <div className="flex items-center gap-5 flex-1 min-w-0">
+                          <div className={cn(
+                            "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-3",
+                            item.mode === 'url' 
+                              ? "bg-red-500 text-white shadow-red-500/20" 
+                              : "bg-blue-600 text-white shadow-blue-600/20"
+                          )}>
+                            {item.mode === 'url' ? <YoutubeIcon size={24} /> : <FileText size={24} />}
+                          </div>
+                          
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className={cn(
+                                "text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border",
+                                item.mode === 'url' 
+                                  ? "bg-red-50 dark:bg-red-900/20 text-red-600 border-red-100 dark:border-red-900/30" 
+                                  : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-100 dark:border-blue-900/30"
+                              )}>
+                                {item.mode === 'url' ? 'YouTube' : 'Teks'}
+                              </span>
+                              <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                                {item.tone}
+                              </span>
+                            </div>
+                            <h3 className="font-black text-lg md:text-xl text-slate-900 dark:text-white truncate leading-tight">
+                              {item.input}
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider flex items-center gap-2">
+                              <Clock size={10} />
+                              {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} • {new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between md:justify-end gap-6 md:border-l border-slate-100 dark:border-slate-800 md:pl-6">
+                          <div className="flex items-center gap-3">
+                            <div className="flex -space-x-1.5">
+                              {item.results.x && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900 shadow-sm"><TwitterIcon size={12} /></div>}
+                              {item.results.linkedin && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900 shadow-sm"><LinkedinIcon size={12} /></div>}
+                              {item.results.instagram && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900 shadow-sm"><InstagramIcon size={12} /></div>}
+                              {item.results.tiktok && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900 shadow-sm"><TiktokIcon size={12} /></div>}
+                            </div>
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter hidden sm:block">
+                              {Object.values(item.results).filter(Boolean).length} Format
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteHistoryItem(item.id, e);
+                              }}
+                              className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-300"
+                              title="Hapus Proyek"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                            <div className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-all duration-500">
+                              <ArrowUpRight size={18} />
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                {filteredHistory.length > displayLimit && (
+                  <div className="mt-12 flex justify-center">
+                    <button 
+                      onClick={() => setDisplayLimit(prev => prev + 5)}
+                      className="px-10 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-black text-xs uppercase tracking-[0.2em] hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-xl active:scale-95"
+                    >
+                      Muat Lebih Banyak
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : searchQuery ? (
               <motion.div 
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={{
-                  hidden: {},
-                  visible: { transition: { staggerChildren: 0.1 } }
-                }}
-                className="grid gap-6 w-full"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-24 bg-white/20 dark:bg-slate-900/20 backdrop-blur-md rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-800"
               >
-                {history.map((item, index) => (
-                  <motion.div 
-                    key={item.id}
-                    variants={{
-                      hidden: { opacity: 0, y: 20 },
-                      visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-                    }}
-                    onClick={() => loadFromHistory(item)}
-                    className="group relative bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-6 md:p-8 rounded-[2.5rem] hover:border-blue-500/50 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col gap-6"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                      <div className="flex items-center gap-5">
-                        <div className={cn(
-                          "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-500",
-                          item.mode === 'url' ? "bg-red-50 dark:bg-red-500/10 text-red-600" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600"
-                        )}>
-                          {item.mode === 'url' ? <YoutubeIcon size={28} /> : <FileText size={28} />}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={cn(
-                              "text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg",
-                              item.mode === 'url' ? "bg-red-100 dark:bg-red-900/20 text-red-600" : "bg-blue-100 dark:bg-blue-900/20 text-blue-600"
-                            )}>
-                              {item.mode === 'url' ? 'YouTube Video' : 'Original Text'}
-                            </span>
-                            <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">
-                              {item.tone}
-                            </span>
-                          </div>
-                          <h3 className="font-black text-xl text-slate-900 dark:text-white truncate max-w-[280px] md:max-w-md">
-                            {item.input}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-6 md:pt-0 border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-2">
-                          <div className="flex -space-x-2">
-                            {item.results.x && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900" title="X Post"><TwitterIcon size={12} /></div>}
-                            {item.results.linkedin && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900" title="LinkedIn"><LinkedinIcon size={12} /></div>}
-                            {item.results.instagram && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900" title="Instagram"><InstagramIcon size={12} /></div>}
-                            {item.results.tiktok && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900" title="TikTok"><TiktokIcon size={12} /></div>}
-                            {item.results.blog && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900" title="Blog"><FileText size={12} /></div>}
-                          </div>
-                          <span className="text-[10px] font-black text-slate-400 ml-2 uppercase tracking-tighter">
-                            {Object.values(item.results).filter(Boolean).length} Platforms
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className="hidden md:block text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">
-                            {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                          <button 
-                            onClick={(e) => deleteHistoryItem(item.id, e)}
-                            className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-300"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                          <div className="w-11 h-11 flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
-                            <ArrowUpRight size={20} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-400">
+                  <Search size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Hasil tidak ditemukan</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">Tidak ada proyek yang sesuai dengan "{searchQuery}"</p>
+                <button 
+                  onClick={() => { setSearchQuery(""); setActiveFilter("all"); }}
+                  className="mt-6 text-blue-600 font-bold hover:underline"
+                >
+                  Reset Pencarian
+                </button>
               </motion.div>
             ) : (
               <motion.div 

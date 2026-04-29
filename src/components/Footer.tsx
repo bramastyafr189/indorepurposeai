@@ -55,7 +55,7 @@ export function Footer() {
                 Siap Dominasi <br />Media Sosial?
               </h3>
               <p className="text-blue-100 text-lg font-medium max-w-md">
-                Bergabunglah dengan ribuan kreator Indonesia yang telah beralih ke strategi konten berbasis AI.
+                Bergabunglah dengan para kreator Indonesia yang telah beralih ke strategi konten berbasis AI.
               </p>
             </div>
             <a 
@@ -73,7 +73,40 @@ export function Footer() {
           <div className="lg:col-span-5 flex flex-col items-start">
             <div className="flex items-center gap-3 mb-8 group cursor-pointer">
               <div className="rounded-2xl bg-blue-600 p-2 shadow-xl shadow-blue-500/20 group-hover:rotate-12 transition-transform duration-500">
-                <Share2 className="text-white" size={20} />
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  className="text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <rect 
+                    x="8" 
+                    y="8" 
+                    width="12" 
+                    height="12" 
+                    rx="3" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeOpacity="0.4" 
+                  />
+                  <rect 
+                    x="4" 
+                    y="4" 
+                    width="12" 
+                    height="12" 
+                    rx="3" 
+                    fill="currentColor" 
+                    fillOpacity="0.1"
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                  />
+                  <path 
+                    d="M9 8.5L13 10L9 11.5V8.5Z" 
+                    fill="currentColor" 
+                  />
+                </svg>
               </div>
               <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white font-display">
                 IndoRepurpose<span className="text-blue-600">AI</span>
@@ -84,10 +117,7 @@ export function Footer() {
             </p>
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest">
-                <Globe size={14} className="text-blue-600" /> Berbasis di Jakarta, Indonesia
-              </div>
-              <div className="flex items-center gap-3 text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest">
-                <Mail size={14} className="text-blue-600" /> support@indorepurpose.ai
+                <Globe size={14} className="text-blue-600" /> Berbasis di Indonesia
               </div>
             </div>
           </div>
@@ -140,7 +170,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-12 border-t border-slate-100 dark:border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
-            © {currentYear} IndoRepurpose AI. Hak Cipta Dilindungi.
+            © {currentYear} IndoRepurpose AI.
           </p>
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             <div className={cn(

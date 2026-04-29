@@ -362,7 +362,7 @@ export default function Home() {
                 </div>
                 
                 <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] hidden md:block">
-                  IndoRepurpose AI Core v2.5
+                  IndoRepurpose Intelligence Engine v1.0
                 </p>
               </div>
 
@@ -921,9 +921,7 @@ export default function Home() {
 
         <Pricing />
 
-        <section id="history" className="py-24 md:py-32 px-4 sm:px-6 relative overflow-hidden z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500 w-full flex flex-col justify-center min-h-[80vh]">
-          {/* Backdrop Blur Layer */}
-          <div className="absolute inset-0 backdrop-blur-[2px] pointer-events-none z-0" />
+        <section id="history" className="py-24 md:py-32 px-4 sm:px-6 relative overflow-hidden z-10 border-t border-slate-100/50 dark:border-slate-800/50 transition-colors duration-500 w-full flex flex-col justify-center min-h-[80vh] bg-transparent">
 
           {/* Mesh Gradient Background */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_85%,transparent)] z-0">
@@ -964,11 +962,11 @@ export default function Home() {
                   placeholder="Cari judul video atau teks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-14 pl-14 pr-6 rounded-2xl bg-white/50 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 dark:focus:ring-blue-500/10 transition-all text-slate-700 dark:text-slate-200 font-medium"
+                  className="w-full h-14 pl-14 pr-6 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 dark:focus:ring-blue-500/10 transition-all text-slate-700 dark:text-slate-200 font-medium"
                 />
               </div>
               
-              <div className="flex items-center p-1.5 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
+              <div className="flex items-center p-1.5 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
                 <button 
                   onClick={() => setActiveFilter('all')}
                   className={cn(
@@ -1017,7 +1015,7 @@ export default function Home() {
                           layout: { type: "spring", stiffness: 300, damping: 30 }
                         }}
                         onClick={() => loadFromHistory(item)}
-                        className="group relative bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 p-5 md:p-7 rounded-[2.5rem] hover:border-blue-500/50 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6"
+                        className="group relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 p-5 md:p-7 rounded-[2.5rem] hover:border-blue-500/50 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6"
                       >
                         <div className="flex items-center gap-5 flex-1 min-w-0">
                           <div className={cn(

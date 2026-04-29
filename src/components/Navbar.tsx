@@ -127,11 +127,47 @@ export function Navbar() {
             href="/"
             className="flex items-center gap-2 cursor-pointer group"
           >
-            <div className="rounded-lg bg-blue-600 p-1.5 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-              <Share2 className="text-white" size={20} />
+            <div className="rounded-2xl bg-blue-600 p-2 shadow-xl shadow-blue-500/20 group-hover:rotate-12 transition-transform duration-500">
+              <svg 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                className="text-white"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Background Layer */}
+                <rect 
+                  x="8" 
+                  y="8" 
+                  width="12" 
+                  height="12" 
+                  rx="3" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeOpacity="0.4" 
+                />
+                {/* Foreground Layer */}
+                <rect 
+                  x="4" 
+                  y="4" 
+                  width="12" 
+                  height="12" 
+                  rx="3" 
+                  fill="currentColor" 
+                  fillOpacity="0.1"
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                />
+                {/* Play Symbol */}
+                <path 
+                  d="M9 8.5L13 10L9 11.5V8.5Z" 
+                  fill="currentColor" 
+                />
+              </svg>
             </div>
-            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
-              IndoRepurpose AI
+            <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+              IndoRepurpose<span className="text-blue-600">AI</span>
             </span>
           </Link>
  

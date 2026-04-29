@@ -43,8 +43,9 @@ import Link from 'next/link';
 type Step = 'method' | 'confirm' | 'instructions';
 
 const PLANS = {
-  'Pro': { price: 299000, color: 'blue' },
-  'Agency': { price: 749000, color: 'indigo' }
+  'Starter': { price: 20000, color: 'amber' },
+  'Plus': { price: 50000, color: 'blue' },
+  'Pro': { price: 75000, color: 'indigo' }
 } as const;
 
 const METHODS = BUSINESS_CONFIG.payment.methods;

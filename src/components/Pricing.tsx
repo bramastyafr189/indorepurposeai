@@ -15,12 +15,12 @@ const plans = [
     price: '0', 
     description: 'Untuk mencoba keajaiban AI kami.',
     features: [
-      '2 Kredit / Bulan',
-      '8 Format Konten Sosial',
-      'Akses Standar AI',
-      'Support Komunitas',
+      '2 Kredit Gratis',
+      'Akses Semua Format Konten',
+      'Akses Semua Fitur AI',
+      'Arsip Proyek Cloud',
     ],
-    cta: 'Mulai Gratis',
+    cta: 'Coba Gratis',
     highlight: false,
     icon: HelpCircle,
     color: 'slate',
@@ -28,54 +28,56 @@ const plans = [
   },
   { 
     name: 'Starter', 
-    price: '149.000', 
+    price: '20.000', 
     description: 'Cocok untuk kreator yang baru mulai.',
     features: [
-      '15 Kredit / Bulan',
-      'Dukungan Link YouTube',
-      'Tanpa Tanda Air (Watermark)',
-      'AI Engine Versi 2.0',
-      'Support Email',
+      '10 Kredit / Bulan',
+      'Akses Semua Format Konten',
+      'Akses Semua Fitur AI',
+      'Arsip Proyek Cloud',
+      'Dukungan Pusat Bantuan',
     ],
     cta: 'Pilih Starter',
     highlight: false,
     icon: Zap,
-    color: 'amber',
-    badge: 'Best Value'
+    color: 'amber', 
+    badge: 'Ekonomis'
   },
   { 
     name: 'Plus', 
-    price: '299.000', 
+    price: '50.000', 
     description: 'Pilihan terbaik untuk kreator aktif.',
     features: [
-      '50 Kredit / Bulan',
-      'Brand Voice Tuning ✨',
-      'Live Content Preview ✨',
-      'AI Engine Prioritas (Cepat)',
-      'Support Chat Prioritas',
+      '30 Kredit / Bulan',
+      'Akses Semua Format Konten',
+      'Akses Semua Fitur AI',
+      'Arsip Proyek Cloud',
+      'Dukungan Pusat Bantuan',
+      'Lebih Hemat dari Starter',
     ],
-    cta: 'Pilih Paket Plus',
+    cta: 'Pilih Plus',
     highlight: true,
     icon: Sparkles,
-    color: 'blue',
+    color: 'blue', 
     badge: 'Paling Populer'
   },
   { 
     name: 'Pro', 
-    price: '599.000', 
-    description: 'Untuk agensi & tim media besar.',
+    price: '75.000', 
+    description: 'Untuk kreator profesional & power user.',
     features: [
-      'Kredit Tanpa Batas',
-      'Kelola Banyak Brand',
-      'Akses API (Coming Soon)',
-      'Riset Keyword AI ✨',
-      'Dedicated Manager',
+      '50 Kredit / Bulan',
+      'Akses Semua Format Konten',
+      'Akses Semua Fitur AI',
+      'Arsip Proyek Cloud',
+      'Dukungan Pusat Bantuan',
+      'Lebih Hemat dari Plus',
     ],
-    cta: 'Hubungi Sales',
+    cta: 'Pilih Pro',
     highlight: false,
     icon: Shield,
-    color: 'indigo',
-    badge: 'Enterprise'
+    color: 'indigo', 
+    badge: 'Eksklusif'
   },
 ];
 
@@ -92,7 +94,13 @@ export function Pricing() {
 
   const handlePurchase = async (plan: any) => {
     if (plan.price === '0') {
-      toast.info('Paket Free sudah aktif di akun Anda.');
+      const transformSection = document.getElementById('transform');
+      if (transformSection) {
+        transformSection.scrollIntoView({ behavior: 'smooth' });
+        toast.success('Silakan tempel link Anda di atas untuk mencoba gratis!');
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       return;
     }
     

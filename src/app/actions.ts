@@ -117,7 +117,7 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
     }
 
     // 3. Call Gemini
-    const results = await repurposeAllContent(sourceContent, tone);
+    const { results, modelId } = await repurposeAllContent(sourceContent, tone);
 
     // 4. Save to Supabase & Deduct Credit
     const { error: saveError } = await supabase
@@ -128,6 +128,7 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
           input_content: input, 
           mode, 
           tone,
+          model_id: modelId,
           result_x: results.x, 
           result_linkedin: results.linkedin,
           result_instagram: results.instagram,
@@ -491,8 +492,9 @@ export async function approveTransaction(transactionId: string) {
 
     // 3. Determine credits
     let creditsToAdd = 0;
-    if (tx.plan_name === 'Pro') creditsToAdd = 100;
-    else if (tx.plan_name === 'Agency') creditsToAdd = 500;
+    if (tx.plan_name === 'Pro') creditsToAdd = 50;
+    else if (tx.plan_name === 'Plus') creditsToAdd = 30;
+    else if (tx.plan_name === 'Starter') creditsToAdd = 10;
     else creditsToAdd = 10; // Default
 
     // 4. Calculate New Expiry Date (Stacking Logic)
@@ -717,7 +719,7 @@ export async function getAllHistoryAdmin() {
   try {
     const { data, error } = await adminSupabase
       .from('history')
-      .select('*')
+      .select('*, ai_models(model_name)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;

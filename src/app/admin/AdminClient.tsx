@@ -80,7 +80,22 @@ export default function AdminClient() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [editForm, setEditForm] = useState({ credits: 0, plan_name: '', plan_expires_at: '' });
   const [updating, setUpdating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean,
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    type: 'danger' | 'success' | 'info'
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'info'
+  });
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'created_at', direction: 'desc' });
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isAuthorized, setIsAuthorized] = useState(true);
@@ -220,57 +235,80 @@ export default function AdminClient() {
 
 
   const handleApprove = async (id: string) => {
-    if (!confirm('Setujui transaksi ini?')) return;
-    setProcessingId(id);
-    const res = await approveTransaction(id);
-    if (res.success && res.userId) {
-      // Broadcast to specific user
-      const supabase = createClient();
-      supabase.channel(`user-updates:${res.userId}`).send({
-        type: 'broadcast',
-        event: 'profile-updated',
-        payload: { status: 'success' }
-      });
-
-      toast.success('Disetujui!');
-      fetchData(); // Refresh all to update stats
-    } else if (!res.success) {
-      toast.error(res.error);
-    }
-    setProcessingId(null);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Setujui Transaksi?',
+      message: 'Apakah Anda yakin ingin menyetujui transaksi ini? Kredit akan otomatis ditambahkan ke akun pengguna.',
+      type: 'success',
+      onConfirm: async () => {
+        setProcessingId(id);
+        const res = await approveTransaction(id);
+        if (res.success && res.userId) {
+          const supabase = createClient();
+          supabase.channel(`user-updates:${res.userId}`).send({
+            type: 'broadcast',
+            event: 'profile-updated',
+            payload: { status: 'success' }
+          });
+          toast.success('Transaksi Disetujui!');
+          fetchData();
+        } else if (!res.success) {
+          toast.error(res.error);
+        }
+        setProcessingId(null);
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleReject = async (id: string) => {
-    if (!confirm('Tolak transaksi ini?')) return;
-    setProcessingId(id);
-    const res = await rejectTransaction(id);
-    if (res.success && res.userId) {
-      // Broadcast to specific user
-      const supabase = createClient();
-      supabase.channel(`user-updates:${res.userId}`).send({
-        type: 'broadcast',
-        event: 'profile-updated',
-        payload: { status: 'rejected' }
-      });
-
-      toast.info('Ditolak');
-      fetchData();
-    } else if (!res.success) {
-      toast.error(res.error);
-    }
-    setProcessingId(null);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Tolak Transaksi?',
+      message: 'Apakah Anda yakin ingin menolak transaksi ini? Pengguna akan diberitahu melalui status transaksi mereka.',
+      type: 'danger',
+      onConfirm: async () => {
+        setProcessingId(id);
+        const res = await rejectTransaction(id);
+        if (res.success && res.userId) {
+          const supabase = createClient();
+          supabase.channel(`user-updates:${res.userId}`).send({
+            type: 'broadcast',
+            event: 'profile-updated',
+            payload: { status: 'rejected' }
+          });
+          toast.info('Transaksi Ditolak');
+          fetchData();
+        } else if (!res.success) {
+          toast.error(res.error);
+        }
+        setProcessingId(null);
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleUpdateStatus = async (id: string, status: string) => {
-    setProcessingId(id);
-    const res = await updateTicketStatus(id, status);
-    if (res.success) {
-      toast.success(`Tiket diupdate ke ${status}`);
-      fetchData();
-    } else {
-      toast.error(res.error);
-    }
-    setProcessingId(null);
+    setConfirmModal({
+      isOpen: true,
+      title: status === 'resolved' ? 'Selesaikan Tiket?' : 'Buka Kembali Tiket?',
+      message: status === 'resolved' 
+        ? 'Tiket ini akan ditandai sebagai selesai. Pastikan semua aduan pengguna sudah tertangani.'
+        : 'Tiket ini akan dibuka kembali untuk percakapan lebih lanjut.',
+      type: status === 'resolved' ? 'success' : 'info',
+      onConfirm: async () => {
+        setProcessingId(id);
+        const res = await updateTicketStatus(id, status);
+        if (res.success) {
+          toast.success(`Tiket berhasil diupdate ke ${status}`);
+          fetchData();
+        } else {
+          toast.error(res.error);
+        }
+        setProcessingId(null);
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const loadMessages = async (ticketId: string) => {
@@ -419,7 +457,10 @@ export default function AdminClient() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
+                onClick={() => {
+                  setActiveTab(tab.id as TabType);
+                  setCurrentPage(1);
+                }}
                 className={cn(
                   "relative flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all",
                   activeTab === tab.id 
@@ -552,7 +593,7 @@ export default function AdminClient() {
                   </motion.div>
                 )}
 
-                {activeTab === 'verifikasi' && (
+                 {activeTab === 'verifikasi' && (
                   <motion.div
                     key="verifikasi"
                     initial={{ opacity: 0, x: 20 }}
@@ -561,173 +602,226 @@ export default function AdminClient() {
                     className="space-y-6"
                   >
                     {transactions.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-6">
-                        {transactions.map((tx) => (
-                          <VerifikasiCard 
-                            key={tx.id} 
-                            tx={tx} 
-                            processingId={processingId}
-                            onApprove={handleApprove}
-                            onReject={handleReject}
-                            methodInfo={PAYMENT_METHODS[tx.payment_method]}
-                          />
-                        ))}
-                      </div>
+                      <>
+                        <div className="grid grid-cols-1 gap-6">
+                          {transactions
+                            .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                            .map((tx) => (
+                              <VerifikasiCard 
+                                key={tx.id} 
+                                tx={tx} 
+                                processingId={processingId}
+                                onApprove={handleApprove}
+                                onReject={handleReject}
+                                methodInfo={PAYMENT_METHODS[tx.payment_method]}
+                              />
+                            ))}
+                        </div>
+                        <Pagination 
+                          current={currentPage} 
+                          total={transactions.length} 
+                          perPage={itemsPerPage} 
+                          onPageChange={setCurrentPage} 
+                        />
+                      </>
                     ) : (
                       <EmptyState message="Semua pembayaran sudah diverifikasi." />
                     )}
                   </motion.div>
                 )}
 
-                {activeTab === 'transaksi' && (
+                 {activeTab === 'transaksi' && (
                   <motion.div
                     key="transaksi"
                     initial={{ opacity: 0, filter: 'blur(10px)' }}
                     animate={{ opacity: 1, filter: 'blur(0px)' }}
-                    className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden"
+                    className="space-y-6"
                   >
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">ID Order</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Pengguna</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Plan</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Metode</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Tanggal</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                          {allTransactions.filter(tx => 
-                            tx.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            tx.profiles?.email.toLowerCase().includes(searchQuery.toLowerCase())
-                          ).map(tx => (
-                            <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                              <td className="px-8 py-5 text-xs font-bold text-slate-500">{tx.order_id}</td>
-                              <td className="px-8 py-5">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 text-[10px] font-black">
-                                    {tx.profiles?.email?.[0].toUpperCase()}
-                                  </div>
-                                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px]">{tx.profiles?.email}</span>
-                                </div>
-                              </td>
-                              <td className="px-8 py-5">
-                                <span className={cn(
-                                  "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest",
-                                  tx.plan_name === 'Agency' ? "bg-purple-100 text-purple-600" :
-                                  tx.plan_name === 'Pro' ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"
-                                )}>
-                                  {tx.plan_name}
-                                </span>
-                              </td>
-                              <td className="px-8 py-5">
-                                {tx.payment_method && PAYMENT_METHODS[tx.payment_method] ? (
-                                  <div className="flex items-center gap-2">
-                                    <img src={PAYMENT_METHODS[tx.payment_method].logo} alt="" className="w-4 h-4 object-contain" />
-                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{PAYMENT_METHODS[tx.payment_method].name}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400 italic">Manual/Lama</span>
-                                )}
-                              </td>
-                              <td className="px-8 py-5 text-sm font-black text-slate-900 dark:text-white">
-                                Rp {(tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')}
-                              </td>
-                              <td className="px-8 py-5">
-                                <span className={cn(
-                                  "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5",
-                                  tx.status === 'success' ? "text-emerald-500" :
-                                  tx.status === 'pending' ? "text-amber-500" :
-                                  tx.status === 'verifying' ? "text-blue-500" : "text-slate-400"
-                                )}>
-                                  <div className={cn("w-1.5 h-1.5 rounded-full", 
-                                    tx.status === 'success' ? "bg-emerald-500" :
-                                    tx.status === 'pending' ? "bg-amber-500" :
-                                    tx.status === 'verifying' ? "bg-blue-500 animate-pulse" : "bg-slate-400"
-                                  )} />
-                                  {tx.status}
-                                </span>
-                              </td>
-                              <td className="px-8 py-5 text-xs text-slate-400">
-                                {new Date(tx.created_at).toLocaleDateString('id-ID')}
-                              </td>
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">ID Order</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Pengguna</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Plan</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Metode</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Tanggal</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                            {allTransactions
+                              .filter(tx => 
+                                tx.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                tx.profiles?.email.toLowerCase().includes(searchQuery.toLowerCase())
+                              )
+                              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                              .map(tx => (
+                                <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-8 py-5 text-xs font-bold text-slate-500">{tx.order_id}</td>
+                                  <td className="px-8 py-5">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 text-[10px] font-black">
+                                        {tx.profiles?.email?.[0].toUpperCase()}
+                                      </div>
+                                      <span className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px]">{tx.profiles?.email}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                    <span className={cn(
+                                      "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest",
+                                      tx.plan_name === 'Pro' ? "bg-indigo-100 text-indigo-600" :
+                                      tx.plan_name === 'Plus' ? "bg-blue-100 text-blue-600" :
+                                      tx.plan_name === 'Starter' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"
+                                    )}>
+                                      {tx.plan_name}
+                                    </span>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                    {tx.payment_method && PAYMENT_METHODS[tx.payment_method] ? (
+                                      <div className="flex items-center gap-2">
+                                        <img src={PAYMENT_METHODS[tx.payment_method].logo} alt="" className="w-4 h-4 object-contain" />
+                                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{PAYMENT_METHODS[tx.payment_method].name}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 italic">Manual/Lama</span>
+                                    )}
+                                  </td>
+                                  <td className="px-8 py-5 text-sm font-black text-slate-900 dark:text-white">
+                                    Rp {(tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')}
+                                  </td>
+                                  <td className="px-8 py-5">
+                                    <span className={cn(
+                                      "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5",
+                                      tx.status === 'success' ? "text-emerald-500" :
+                                      tx.status === 'pending' ? "text-amber-500" :
+                                      tx.status === 'verifying' ? "text-blue-500" : "text-slate-400"
+                                    )}>
+                                      <div className={cn("w-1.5 h-1.5 rounded-full", 
+                                        tx.status === 'success' ? "bg-emerald-500" :
+                                        tx.status === 'pending' ? "bg-amber-500" :
+                                        tx.status === 'verifying' ? "bg-blue-500 animate-pulse" : "bg-slate-400"
+                                      )} />
+                                      {tx.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-8 py-5 text-xs text-slate-400">
+                                    {new Date(tx.created_at).toLocaleDateString('id-ID')}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
+                    <Pagination 
+                      current={currentPage} 
+                      total={allTransactions.filter(tx => 
+                        tx.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        tx.profiles?.email.toLowerCase().includes(searchQuery.toLowerCase())
+                      ).length} 
+                      perPage={itemsPerPage} 
+                      onPageChange={setCurrentPage} 
+                    />
                   </motion.div>
                 )}
 
-                {activeTab === 'pengguna' && (
+                 {activeTab === 'pengguna' && (
                   <motion.div
                     key="pengguna"
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
                   >
-                    {users.filter(u => 
-                      u.email?.toLowerCase().includes(searchQuery.toLowerCase())
-                    ).map(user => (
-                      <div key={user.id} className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/10 dark:shadow-none hover:border-blue-500/30 transition-all group">
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-black">
-                            {user.email ? user.email[0].toUpperCase() : '?'}
-                          </div>
-                          <div className={cn(
-                            "px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em]",
-                            user.plan_name === 'Agency' ? "bg-purple-100 text-purple-600" :
-                            user.plan_name === 'Pro' ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"
-                          )}>
-                            {user.role === 'admin' ? 'SYSTEM ADMIN' : `PAKET ${user.plan_name}`}
-                          </div>
-                        </div>
-                        <h4 className="text-lg font-black text-slate-900 dark:text-white truncate mb-1">{user.email?.split('@')[0]}</h4>
-                        <p className="text-xs text-slate-400 truncate mb-6 flex items-center gap-2">
-                          <Mail size={12} className="text-blue-500" />
-                          {user.email}
-                        </p>
-                        <div className="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-800">
-                          <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Kredit Sisa</p>
-                            <p className="text-xl font-black text-blue-600">{user.credits}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Terdaftar</p>
-                            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{new Date(user.created_at).toLocaleDateString('id-ID')}</p>
-                          </div>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Masa Aktif</p>
-                          <p className={cn(
-                            "text-xs font-black",
-                            user.plan_name === 'Free' ? "text-slate-400" : "text-amber-500"
-                          )}>
-                            {user.plan_name === 'Free' ? 'SELAMANYA' : user.plan_expires_at ? new Date(user.plan_expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
-                          </p>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setEditForm({ 
-                              credits: user.credits, 
-                              plan_name: user.plan_name,
-                              plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString().split('T')[0] : ''
-                            });
-                          }}
-                          className="mt-6 w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                        >
-                          <Edit size={14} /> Edit User
-                        </button>
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Pengguna</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Paket</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Kredit</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Masa Aktif</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Terdaftar</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                            {users
+                              .filter(u => 
+                                u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                              )
+                              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                              .map(user => (
+                                <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-8 py-5">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg">
+                                        {user.email ? user.email[0].toUpperCase() : '?'}
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{user.email?.split('@')[0]}</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">{user.email}</p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                    <span className={cn(
+                                      "px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em]",
+                                      user.plan_name === 'Pro' ? "bg-indigo-100 text-indigo-600" :
+                                      user.plan_name === 'Plus' ? "bg-blue-100 text-blue-600" :
+                                      user.plan_name === 'Starter' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"
+                                    )}>
+                                      {user.plan_name}
+                                    </span>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                    <span className="text-sm font-black text-blue-600">{user.credits}</span>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                    <span className={cn(
+                                      "text-[10px] font-black uppercase tracking-widest",
+                                      user.plan_name === 'Free' ? "text-slate-400" : "text-amber-500"
+                                    )}>
+                                      {user.plan_name === 'Free' ? 'SELAMANYA' : user.plan_expires_at ? new Date(user.plan_expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                    </span>
+                                  </td>
+                                  <td className="px-8 py-5 text-xs text-slate-400">
+                                    {new Date(user.created_at).toLocaleDateString('id-ID')}
+                                  </td>
+                                  <td className="px-8 py-5 text-right">
+                                    <button 
+                                      onClick={() => {
+                                        setSelectedUser(user);
+                                        setEditForm({ 
+                                          credits: user.credits, 
+                                          plan_name: user.plan_name,
+                                          plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString().split('T')[0] : ''
+                                        });
+                                      }}
+                                      className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-blue-600 hover:text-white rounded-xl text-slate-500 transition-all shadow-sm"
+                                    >
+                                      <Edit size={16} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
                       </div>
-                    ))}
+                    </div>
+                    <Pagination 
+                      current={currentPage} 
+                      total={users.filter(u => u.email?.toLowerCase().includes(searchQuery.toLowerCase())).length} 
+                      perPage={itemsPerPage} 
+                      onPageChange={setCurrentPage} 
+                    />
                   </motion.div>
                 )}
 
-                {activeTab === 'laporan' && (
+                 {activeTab === 'laporan' && (
                   <motion.div
                     key="laporan"
                     initial={{ opacity: 0, scale: 0.98 }}
@@ -735,89 +829,108 @@ export default function AdminClient() {
                     className="space-y-6"
                   >
                     {history.length > 0 ? (
-                      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                                <th 
-                                  onClick={() => handleSort('email')}
-                                  className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-blue-600 transition-colors"
-                                >
-                                  Pengguna {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Konten Input</th>
-                                <th 
-                                  onClick={() => handleSort('mode')}
-                                  className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-blue-600 transition-colors"
-                                >
-                                  Mode {sortConfig.key === 'mode' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Tone</th>
-                                <th 
-                                  onClick={() => handleSort('created_at')}
-                                  className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-blue-600 transition-colors"
-                                >
-                                  Waktu {sortConfig.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Aksi</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                              {sortedHistory.filter(h => 
-                                (h.profiles?.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-                                (h.input_content?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-                              ).map((item) => (
-                                <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                              <td className="px-8 py-5">
-                                <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                                  {item.profiles?.email || 'Unknown User'}
-                                </span>
-                              </td>
-                              <td className="px-8 py-5">
-                                <div className="max-w-[300px]">
-                                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 border border-slate-100 dark:border-slate-800 flex items-center gap-2 group/input">
-                                    <div className="flex-1 overflow-x-auto whitespace-nowrap hide-scrollbar text-[10px] text-slate-500 font-medium italic select-all cursor-text">
-                                      {item.input_content}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                                  <td className="px-8 py-5">
-                                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded">
-                                      {item.mode}
-                                    </span>
-                                  </td>
-                                  <td className="px-8 py-5">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                      {item.tone || 'professional'}
-                                    </span>
-                                  </td>
-                                  <td className="px-8 py-5 text-xs text-slate-400 tabular-nums">
-                                    {new Date(item.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                  </td>
-                                  <td className="px-8 py-5 text-right">
-                                    <button 
-                                      onClick={() => setSelectedLog(item)}
-                                      className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                                      title="Lihat Detail Transformasi"
-                                    >
-                                      <Eye size={18} />
-                                    </button>
-                                  </td>
+                      <>
+                        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                  <th 
+                                    onClick={() => handleSort('email')}
+                                    className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-blue-600 transition-colors"
+                                  >
+                                    Pengguna {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                  </th>
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Konten Input</th>
+                                  <th 
+                                    onClick={() => handleSort('mode')}
+                                    className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-blue-600 transition-colors"
+                                  >
+                                    Mode {sortConfig.key === 'mode' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                  </th>
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Tone</th>
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Model AI</th>
+                                  <th 
+                                    onClick={() => handleSort('created_at')}
+                                    className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-blue-600 transition-colors"
+                                  >
+                                    Waktu {sortConfig.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                  </th>
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Aksi</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                                {sortedHistory
+                                  .filter(h => 
+                                    (h.profiles?.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                                    (h.input_content?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+                                  )
+                                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                  .map((item) => (
+                                    <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-8 py-5">
+                                    <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                      {item.profiles?.email || 'Unknown User'}
+                                    </span>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                    <div className="max-w-[300px]">
+                                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 border border-slate-100 dark:border-slate-800 flex items-center gap-2 group/input">
+                                        <div className="flex-1 overflow-x-auto whitespace-nowrap hide-scrollbar text-[10px] text-slate-500 font-medium italic select-all cursor-text">
+                                          {item.input_content}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                      <td className="px-8 py-5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded">
+                                          {item.mode}
+                                        </span>
+                                      </td>
+                                      <td className="px-8 py-5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                          {item.tone || 'professional'}
+                                        </span>
+                                      </td>
+                                      <td className="px-8 py-5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded">
+                                          {item.ai_models?.model_name || 'IndoRepurpose v1.0'}
+                                        </span>
+                                      </td>
+                                      <td className="px-8 py-5 text-xs text-slate-400 tabular-nums">
+                                        {new Date(item.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                      </td>
+                                      <td className="px-8 py-5 text-right">
+                                        <button 
+                                          onClick={() => setSelectedLog(item)}
+                                          className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                          title="Lihat Detail Transformasi"
+                                        >
+                                          <Eye size={18} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                      </div>
+                        <Pagination 
+                          current={currentPage} 
+                          total={sortedHistory.filter(h => 
+                            (h.profiles?.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                            (h.input_content?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+                          ).length} 
+                          perPage={itemsPerPage} 
+                          onPageChange={setCurrentPage} 
+                        />
+                      </>
                     ) : (
                       <EmptyState message="Belum ada riwayat transformasi konten." />
                     )}
                   </motion.div>
                 )}
-
-                {activeTab === 'aduan' && (
+                  {activeTab === 'aduan' && (
                   <motion.div
                     key="aduan"
                     initial={{ opacity: 0, y: 10 }}
@@ -825,66 +938,93 @@ export default function AdminClient() {
                     className="space-y-6"
                   >
                     {tickets.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-6">
-                        {tickets.filter(t => 
-                          t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (t.profiles?.email || '').toLowerCase().includes(searchQuery.toLowerCase())
-                        ).map((ticket) => (
-                          <div key={ticket.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/20 flex flex-col md:flex-row items-start justify-between gap-8 group hover:border-blue-500/30 transition-all">
-                            <div className="flex-1 space-y-4">
-                              <div className="flex items-center gap-3">
-                                <span className={cn(
-                                  "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
-                                  ticket.status === 'open' ? "bg-amber-100 text-amber-600" :
-                                  "bg-emerald-100 text-emerald-600"
-                                )}>
-                                  {ticket.status}
-                                </span>
-                                <span className="text-xs font-bold text-slate-400">ID Tiket: {ticket.id.slice(0, 8)}</span>
-                              </div>
-                              <h3 className="text-2xl font-black text-slate-900 dark:text-white font-display tracking-tight">{ticket.subject}</h3>
-                              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{ticket.message}</p>
-                              </div>
-                                <div className="flex items-center gap-2">
-                                  <Mail size={14} className="text-blue-500" /> 
-                                  {ticket.profiles?.email || `ID: ${ticket.user_id.slice(0, 8)}...`}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Clock size={14} className="text-blue-500" /> 
-                                  {new Date(ticket.created_at).toLocaleString('id-ID')}
-                                </div>
-                                                    <div className="flex flex-row md:flex-col gap-3 shrink-0 w-full md:w-auto">
-                              {ticket.status !== 'resolved' && (
-                                <button 
-                                  onClick={() => handleUpdateStatus(ticket.id, 'resolved')}
-                                  className="flex-1 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all"
-                                >
-                                  Selesaikan (Resolved)
-                                </button>
-                              )}
-                              <button 
-                                onClick={() => {
-                                  setSelectedTicketId(ticket.id);
-                                  loadMessages(ticket.id);
-                                }}
-                                className="flex-1 px-6 py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-                              >
-                                <MessageCircle size={14} /> Buka Percakapan
-                              </button>
-                              {ticket.status === 'resolved' && (
-                                <button 
-                                  onClick={() => handleUpdateStatus(ticket.id, 'open')}
-                                  className="flex-1 px-6 py-4 border border-slate-200 dark:border-slate-800 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all"
-                                >
-                                  Aktifkan Kembali
-                                </button>
-                              )}
-                            </div>
-     </div>
+                      <>
+                        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Subjek & Pesan</th>
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Pengguna</th>
+                                  <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Aksi</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                                {tickets
+                                  .filter(t => 
+                                    t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (t.profiles?.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+                                  )
+                                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                  .map((ticket) => (
+                                    <tr key={ticket.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                      <td className="px-8 py-5">
+                                        <span className={cn(
+                                          "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                                          ticket.status === 'open' ? "bg-amber-100 text-amber-600" :
+                                          "bg-emerald-100 text-emerald-600"
+                                        )}>
+                                          {ticket.status}
+                                        </span>
+                                      </td>
+                                      <td className="px-8 py-5 max-w-md">
+                                        <p className="text-sm font-black text-slate-900 dark:text-white truncate mb-1">{ticket.subject}</p>
+                                        <p className="text-xs text-slate-400 line-clamp-1">{ticket.message}</p>
+                                      </td>
+                                      <td className="px-8 py-5">
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{ticket.profiles?.email}</p>
+                                        <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                                          <Clock size={10} /> {new Date(ticket.created_at).toLocaleDateString('id-ID')}
+                                        </p>
+                                      </td>
+                                      <td className="px-8 py-5 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                          <button 
+                                            onClick={() => {
+                                              setSelectedTicketId(ticket.id);
+                                              loadMessages(ticket.id);
+                                            }}
+                                            className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-blue-600 hover:text-white rounded-xl text-slate-500 transition-all shadow-sm group/btn"
+                                            title="Buka Percakapan"
+                                          >
+                                            <MessageCircle size={16} />
+                                          </button>
+                                          {ticket.status !== 'resolved' ? (
+                                            <button 
+                                              onClick={() => handleUpdateStatus(ticket.id, 'resolved')}
+                                              className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-xl text-slate-500 transition-all shadow-sm"
+                                              title="Selesaikan"
+                                            >
+                                              <CheckCircle2 size={16} />
+                                            </button>
+                                          ) : (
+                                            <button 
+                                              onClick={() => handleUpdateStatus(ticket.id, 'open')}
+                                              className="p-3 bg-slate-50 dark:bg-slate-800 hover:bg-amber-600 hover:text-white rounded-xl text-slate-500 transition-all shadow-sm"
+                                              title="Aktifkan Kembali"
+                                            >
+                                              <RefreshCcw size={16} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                        <Pagination 
+                          current={currentPage} 
+                          total={tickets.filter(t => 
+                            t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (t.profiles?.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+                          ).length} 
+                          perPage={itemsPerPage} 
+                          onPageChange={setCurrentPage} 
+                        />
+                      </>
                     ) : (
                       <EmptyState message="Semua masalah pengguna telah terselesaikan." />
                     )}
@@ -1168,8 +1308,8 @@ export default function AdminClient() {
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Paket Layanan</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {['Free', 'Pro', 'Agency'].map((plan) => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {['Free', 'Starter', 'Plus', 'Pro'].map((plan) => (
                       <button
                         key={plan}
                         onClick={() => setEditForm({ ...editForm, plan_name: plan })}
@@ -1216,7 +1356,104 @@ export default function AdminClient() {
             </motion.div>
           </div>
         )}
+
+        {/* Custom Confirmation Modal */}
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            >
+              <div className="p-8 text-center">
+                <div className={cn(
+                  "w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center shadow-lg transition-transform",
+                  confirmModal.type === 'danger' ? "bg-red-50 text-red-600 shadow-red-500/20" :
+                  confirmModal.type === 'success' ? "bg-emerald-50 text-emerald-600 shadow-emerald-500/20" :
+                  "bg-blue-50 text-blue-600 shadow-blue-500/20"
+                )}>
+                  {confirmModal.type === 'danger' ? <ShieldAlert size={40} /> : 
+                   confirmModal.type === 'success' ? <CheckCircle2 size={40} /> : <Clock size={40} />}
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3 font-display">{confirmModal.title}</h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8">{confirmModal.message}</p>
+                
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                    className="flex-1 py-4 bg-slate-50 dark:bg-slate-800 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    disabled={!!processingId}
+                    className={cn(
+                      "flex-1 py-4 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-2",
+                      confirmModal.type === 'danger' ? "bg-red-600 hover:bg-red-700 shadow-red-500/20" :
+                      confirmModal.type === 'success' ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" :
+                      "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
+                    )}
+                  >
+                    {!!processingId ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    Konfirmasi
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function Pagination({ current, total, perPage, onPageChange }: any) {
+  const totalPages = Math.ceil(total / perPage);
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-2 pt-6">
+      <button
+        disabled={current === 1}
+        onClick={() => onPageChange(current - 1)}
+        className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 disabled:opacity-30 hover:bg-slate-50 transition-all"
+      >
+        <ChevronRight size={18} className="rotate-180" />
+      </button>
+      
+      <div className="flex items-center gap-1">
+        {[...Array(totalPages)].map((_, i) => (
+          <button
+            key={i + 1}
+            onClick={() => onPageChange(i + 1)}
+            className={cn(
+              "w-10 h-10 rounded-xl font-black text-xs transition-all",
+              current === i + 1 
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
+                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-slate-50"
+            )}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+
+      <button
+        disabled={current === totalPages}
+        onClick={() => onPageChange(current + 1)}
+        className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 disabled:opacity-30 hover:bg-slate-50 transition-all"
+      >
+        <ChevronRight size={18} />
+      </button>
     </div>
   );
 }

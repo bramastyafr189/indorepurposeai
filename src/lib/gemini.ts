@@ -11,7 +11,7 @@ async function getOrderedModels() {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('ai_models')
-    .select('model_name')
+    .select('id, model_name')
     .eq('is_active', true)
     .order('priority', { ascending: true });
   
@@ -24,7 +24,7 @@ async function getOrderedModels() {
     throw new Error('Tidak ada model AI aktif yang ditemukan di database.');
   }
 
-  return data.map(m => m.model_name);
+  return data;
 }
 
 async function generateWithRetry(prompt: string, tone: string, maxRetries = 5) {
@@ -34,8 +34,9 @@ async function generateWithRetry(prompt: string, tone: string, maxRetries = 5) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       // Pick model based on attempt number
-      // If we have more retries than models, stay on the last model
-      const modelName = models[i] || models[models.length - 1];
+      const modelConfig = models[i] || models[models.length - 1];
+      const modelName = modelConfig.model_name;
+      const modelId = modelConfig.id;
       
       const model = genAI.getGenerativeModel({ 
         model: modelName,
@@ -60,7 +61,11 @@ async function generateWithRetry(prompt: string, tone: string, maxRetries = 5) {
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      return JSON.parse(response.text());
+      return {
+        results: JSON.parse(response.text()),
+        modelUsed: modelName,
+        modelId: modelId
+      };
     } catch (error: any) {
       lastError = error;
       const isServiceUnavailable = error.message?.includes("503") || error.message?.includes("Service Unavailable") || error.message?.includes("high demand");
@@ -114,6 +119,6 @@ export const repurposeAllContent = async (content: string, tone: string = "profe
 };
 
 export const repurposeContent = async (content: string, platform: 'x' | 'linkedin' | 'instagram' | 'tiktok' | 'newsletter' | 'threads' | 'highlights' | 'blog', tone: string = "professional") => {
-  const results = await repurposeAllContent(content, tone);
+  const { results } = await repurposeAllContent(content, tone);
   return results[platform];
 };

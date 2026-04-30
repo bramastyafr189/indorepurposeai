@@ -450,21 +450,23 @@ export const PreviewModal = ({ isOpen, onClose, platform, content }: PreviewModa
             </button>
 
             <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-h-[85vh] flex flex-col border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+              {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
-                <div className="flex flex-col items-center gap-10">
-                  <div className="w-full flex justify-center py-2">
-                    {renderMockup()}
+                <div className="w-full flex justify-center py-2">
+                  {renderMockup()}
+                </div>
+              </div>
+
+              {/* Fixed Footer: Tips Kreator */}
+              <div className="p-5 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800">
+                <div className="max-w-md mx-auto flex gap-4 items-start">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+                    <Sparkles size={18} />
                   </div>
-                  
-                  <div className="max-w-md w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 flex gap-4 items-start mb-4">
-                     <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
-                        <Sparkles size={18} />
-                     </div>
-                     <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                       <span className="font-bold text-slate-700 dark:text-slate-200 block mb-1 text-[13px]">💡 Tips Kreator:</span>
-                       Pratinjau di atas hanyalah simulasi visual. Terkadang struktur teks dari AI bisa bervariasi, Anda tetap dapat menyesuaikan dan mengedit kembali konten ini sesuai kebutuhan sebelum benar-benar dipublikasikan ke platform pilihan Anda.
-                     </p>
-                  </div>
+                  <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+                    <span className="font-bold text-slate-700 dark:text-slate-200 block mb-1 text-[11px]">💡 Tips Kreator:</span>
+                    Pratinjau di atas hanyalah simulasi visual. Terkadang struktur teks dari AI bisa bervariasi, Anda tetap dapat menyesuaikan kembali konten ini sesuai kebutuhan sebelum dipublikasikan.
+                  </p>
                 </div>
               </div>
             </div>

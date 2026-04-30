@@ -2,7 +2,7 @@
 
 import { getYoutubeTranscript } from "@/lib/youtube";
 import { getArticleContent } from "@/lib/scraper";
-import { repurposeAllContent } from "@/lib/gemini";
+import { repurposeAllContent } from "@/lib/ai-engine";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 
@@ -116,7 +116,7 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
       }
     }
 
-    // 3. Call Gemini
+    // 3. Call AI Engine
     const { results, modelId } = await repurposeAllContent(sourceContent, tone);
 
     // 4. Save to Supabase & Deduct Credit
@@ -937,6 +937,79 @@ export async function sendTicketMessage(ticketId: string, message: string) {
         sender_id: user.id,
         message
       }]);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getAIModelsAdmin() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { data, error } = await supabase
+      .from('ai_models')
+      .select('*')
+      .order('priority', { ascending: true });
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function createAIModelAdmin(modelName: string, priority: number) {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { data, error } = await supabase
+      .from('ai_models')
+      .insert([{ model_name: modelName, priority, is_active: true }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateAIModelAdmin(id: string, updates: any) {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { error } = await supabase
+      .from('ai_models')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteAIModelAdmin(id: string) {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const { error } = await supabase
+      .from('ai_models')
+      .delete()
+      .eq('id', id);
 
     if (error) throw error;
     return { success: true };

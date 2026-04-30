@@ -33,7 +33,10 @@ import {
   Newspaper as NewsletterIcon,
   Sparkles as HighlightsIcon,
   BookOpen as BlogIcon,
-  Edit
+  Edit,
+  Cpu,
+  Plus,
+  ExternalLink
 } from 'lucide-react';
 import { 
   Instagram as InstagramIcon,
@@ -56,14 +59,18 @@ import {
   updateTicketStatus,
   getTicketMessages,
   sendTicketMessage,
-  updateUserAdmin
+  updateUserAdmin,
+  getAIModelsAdmin,
+  createAIModelAdmin,
+  updateAIModelAdmin,
+  deleteAIModelAdmin
 } from '../actions';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-type TabType = 'overview' | 'verifikasi' | 'transaksi' | 'pengguna' | 'laporan' | 'aduan';
+type TabType = 'overview' | 'verifikasi' | 'transaksi' | 'pengguna' | 'laporan' | 'aduan' | 'mesin';
 
 export default function AdminClient() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -83,6 +90,10 @@ export default function AdminClient() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [aiModels, setAiModels] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState<any>(null);
+  const [isModelModalOpen, setIsModelModalOpen] = useState(false);
+  const [modelForm, setModelForm] = useState({ model_name: '', priority: 1, is_active: true });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean,
     title: string,
@@ -208,13 +219,14 @@ export default function AdminClient() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [statsRes, verifyingRes, allTxRes, usersRes, historyRes, ticketsRes] = await Promise.all([
+      const [statsRes, verifyingRes, allTxRes, usersRes, historyRes, ticketsRes, aiModelsRes] = await Promise.all([
         getAdminStats(),
         getVerifyingTransactions(),
         getAllTransactions(),
         getAllUsers(),
         getAllHistoryAdmin(),
-        getAllTicketsAdmin()
+        getAllTicketsAdmin(),
+        getAIModelsAdmin()
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
@@ -223,6 +235,7 @@ export default function AdminClient() {
       if (usersRes.success) setUsers(usersRes.data || []);
       if (historyRes.success) setHistory(historyRes.data || []);
       if (ticketsRes && (ticketsRes as any).success) setTickets((ticketsRes as any).data || []);
+      if (aiModelsRes.success) setAiModels(aiModelsRes.data || []);
 
       if (!statsRes.success && statsRes.error === 'Unauthorized') {
         setIsAuthorized(false);
@@ -231,6 +244,66 @@ export default function AdminClient() {
       toast.error('Gagal mengambil data dashboard');
     }
     setLoading(false);
+  };
+
+  const handleAddModel = async () => {
+    if (!modelForm.model_name) return toast.error('Nama model tidak boleh kosong');
+    setUpdating(true);
+    const res = await createAIModelAdmin(modelForm.model_name, modelForm.priority);
+    if (res.success) {
+      toast.success('Model AI berhasil ditambahkan');
+      setIsModelModalOpen(false);
+      setModelForm({ model_name: '', priority: 1, is_active: true });
+      fetchData();
+    } else {
+      toast.error(res.error || 'Gagal menambahkan model');
+    }
+    setUpdating(false);
+  };
+
+  const handleUpdateModelStatus = async (id: string, isActive: boolean) => {
+    setProcessingId(id);
+    const res = await updateAIModelAdmin(id, { is_active: isActive });
+    if (res.success) {
+      toast.success('Status model diperbarui');
+      fetchData();
+    } else {
+      toast.error(res.error || 'Gagal memperbarui status');
+    }
+    setProcessingId(null);
+  };
+
+  const handleUpdateModelPriority = async (id: string, priority: number) => {
+    setProcessingId(id);
+    const res = await updateAIModelAdmin(id, { priority });
+    if (res.success) {
+      toast.success('Prioritas diperbarui');
+      fetchData();
+    } else {
+      toast.error(res.error || 'Gagal memperbarui prioritas');
+    }
+    setProcessingId(null);
+  };
+
+  const handleDeleteModel = async (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Model AI?',
+      message: 'Tindakan ini tidak dapat dibatalkan. Model akan dihapus permanen dari sistem.',
+      type: 'danger',
+      onConfirm: async () => {
+        setProcessingId(id);
+        const res = await deleteAIModelAdmin(id);
+        if (res.success) {
+          toast.success('Model AI berhasil dihapus');
+          fetchData();
+        } else {
+          toast.error(res.error || 'Gagal menghapus model');
+        }
+        setProcessingId(null);
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
 
@@ -453,7 +526,8 @@ export default function AdminClient() {
               { id: 'transaksi', label: 'Semua Transaksi', icon: HistoryIcon },
               { id: 'pengguna', label: 'Pengguna', icon: Users },
               { id: 'laporan', label: 'Laporan', icon: HistoryIcon },
-              { id: 'aduan', label: 'Tiket Support', icon: LifeBuoy, badge: tickets.filter(t => t.status === 'open').length },
+              { id: 'aduan', label: 'Aduan', icon: LifeBuoy },
+              { id: 'mesin', label: 'Mesin AI', icon: Cpu },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1030,11 +1104,205 @@ export default function AdminClient() {
                     )}
                   </motion.div>
                 )}
+                {activeTab === 'mesin' && (
+                  <motion.div
+                    key="mesin"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <Cpu className="text-blue-600" /> Koneksi Mesin AI
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          Kelola model AI dari OpenRouter yang akan memproses konten. 
+                          <a 
+                            href="https://openrouter.ai/models?order=per_token_price&q=free" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="ml-2 text-blue-600 hover:underline font-bold inline-flex items-center gap-1"
+                          >
+                            Lihat Model Gratis <ExternalLink size={12} />
+                          </a>
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setModelForm({ model_name: '', priority: 1, is_active: true });
+                          setIsModelModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+                      >
+                        <Plus size={18} /> Tambah Model
+                      </button>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Prioritas</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Model & Provider</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                            {aiModels.map((model) => (
+                              <tr key={model.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+                                <td className="px-8 py-5">
+                                  <div className="flex items-center gap-3">
+                                    <input 
+                                      type="number"
+                                      value={model.priority}
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        handleUpdateModelPriority(model.id, isNaN(val) ? 0 : val);
+                                      }}
+                                      className="w-12 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-400 italic">#{model.priority}</span>
+                                  </div>
+                                </td>
+                                <td className="px-8 py-5">
+                                  <div className="flex items-center gap-4">
+                                    <div className={cn(
+                                      "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0",
+                                      model.is_active ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600" : "bg-slate-50 dark:bg-slate-800 text-slate-400"
+                                    )}>
+                                      <Cpu size={20} />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-black text-slate-900 dark:text-white truncate">{model.model_name}</p>
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">OpenRouter</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-8 py-5">
+                                  <button 
+                                    onClick={() => handleUpdateModelStatus(model.id, !model.is_active)}
+                                    className={cn(
+                                      "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all",
+                                      model.is_active 
+                                        ? "bg-emerald-100 text-emerald-600 hover:bg-emerald-200" 
+                                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                    )}
+                                  >
+                                    {model.is_active ? 'Aktif' : 'Non-Aktif'}
+                                  </button>
+                                </td>
+                                <td className="px-8 py-5 text-right">
+                                  <button 
+                                    onClick={() => handleDeleteModel(model.id)}
+                                    className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
+                                    title="Hapus Model"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {aiModels.length === 0 && (
+                        <div className="py-20 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
+                          <Cpu size={48} className="text-slate-200 mb-4" />
+                          <p className="text-slate-500 font-bold">Belum ada model AI yang terkonfigurasi.</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
               </AnimatePresence>
             )}
           </div>
         </div>
       </main>
+
+      {/* Add AI Model Modal */}
+      <AnimatePresence>
+        {isModelModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModelModalOpen(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <Cpu size={20} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">Tambah Model Baru</h3>
+                </div>
+                <button 
+                  onClick={() => setIsModelModalOpen(false)}
+                  className="text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <XCircle size={24} />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Nama Model OpenRouter</label>
+                  <input 
+                    type="text"
+                    placeholder="Contoh: google/gemini-flash-1.5-8b:free"
+                    value={modelForm.model_name}
+                    onChange={(e) => setModelForm({...modelForm, model_name: e.target.value})}
+                    className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white font-bold transition-all"
+                  />
+                  <p className="text-[10px] text-slate-400 italic px-1">Pastikan nama model sesuai dengan identifier di OpenRouter.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Prioritas Eksekusi</label>
+                  <input 
+                    type="number"
+                    value={modelForm.priority || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setModelForm({...modelForm, priority: isNaN(val) ? 0 : val});
+                    }}
+                    className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white font-bold transition-all"
+                  />
+                  <p className="text-[10px] text-slate-400 italic px-1">Angka lebih rendah (misal: 1) akan dicoba lebih dulu.</p>
+                </div>
+
+                <div className="flex items-center gap-4 pt-4">
+                  <button 
+                    onClick={() => setIsModelModalOpen(false)}
+                    className="flex-1 px-6 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    onClick={handleAddModel}
+                    disabled={updating}
+                    className="flex-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {updating ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Simpan Model'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <Footer />
       

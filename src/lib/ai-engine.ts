@@ -1,11 +1,7 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { createAdminClient } from "@/utils/supabase/admin";
 
 // Helper function to wait
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-import { createAdminClient } from "@/utils/supabase/admin";
 
 async function getOrderedModels() {
   const supabase = createAdminClient();
@@ -27,61 +23,90 @@ async function getOrderedModels() {
   return data;
 }
 
-async function generateWithRetry(prompt: string, tone: string, maxRetries = 5) {
+async function generateWithRetry(prompt: string, tone: string) {
   let lastError: any;
   const models = await getOrderedModels();
-  
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      // Pick model based on attempt number
-      const modelConfig = models[i] || models[models.length - 1];
-      const modelName = modelConfig.model_name;
-      const modelId = modelConfig.id;
-      
-      const model = genAI.getGenerativeModel({ 
-        model: modelName,
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: SchemaType.OBJECT,
-            properties: {
-              x: { type: SchemaType.STRING },
-              linkedin: { type: SchemaType.STRING },
-              instagram: { type: SchemaType.STRING },
-              tiktok: { type: SchemaType.STRING },
-              newsletter: { type: SchemaType.STRING },
-              threads: { type: SchemaType.STRING },
-              highlights: { type: SchemaType.STRING },
-              blog: { type: SchemaType.STRING }
-            },
-            required: ["x", "linkedin", "instagram", "tiktok", "newsletter", "threads", "highlights", "blog"]
-          }
-        }
-      } as any);
+  const apiKey = process.env.OPENROUTER_API_KEY;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return {
-        results: JSON.parse(response.text()),
-        modelUsed: modelName,
-        modelId: modelId
-      };
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY tidak ditemukan di environment variables.');
+  }
+  
+  // Try each model one by one based on priority
+  for (let i = 0; i < models.length; i++) {
+    const modelConfig = models[i];
+    const modelName = modelConfig.model_name;
+    const modelId = modelConfig.id;
+    
+    try {
+      console.log(`[AI Engine] Attempting with model (${i + 1}/${models.length}): ${modelName}`);
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://indorepurposeai.vercel.app",
+          "X-Title": "IndoRepurpose AI",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": modelName,
+          "messages": [{ "role": "user", "content": prompt }],
+          // Some free models on OpenRouter error out if JSON mode is forced
+          "response_format": modelName.includes('gemini') || modelName.includes('gpt') 
+            ? { "type": "json_object" } 
+            : undefined
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const remoteError = errorData.error?.message || `HTTP ${response.status}`;
+        throw new Error(`Provider Error: ${remoteError}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.choices || data.choices.length === 0 || !data.choices[0].message) {
+        throw new Error("OpenRouter tidak mengembalikan hasil yang valid.");
+      }
+
+      const content = data.choices[0].message.content;
+
+      if (!content) {
+        throw new Error("Model AI mengembalikan respon kosong.");
+      }
+
+      try {
+        const cleanedContent = content.replace(/```json/g, "").replace(/```/g, "").trim();
+        const results = JSON.parse(cleanedContent);
+        
+        console.log(`[AI Engine] Success using ${modelName}`);
+        return {
+          results,
+          modelUsed: modelName,
+          modelId: modelId
+        };
+      } catch (parseError) {
+        throw new Error("Format JSON tidak valid.");
+      }
+
     } catch (error: any) {
       lastError = error;
-      const isServiceUnavailable = error.message?.includes("503") || error.message?.includes("Service Unavailable") || error.message?.includes("high demand");
+      console.warn(`[AI Engine] Model ${modelName} failed: ${error.message}`);
       
-      if (isServiceUnavailable && i < maxRetries - 1) {
-        // Wait longer each time (1s, 2s, 4s)
-        const waitTime = Math.pow(2, i) * 1000;
-        console.warn(`Gemini 503 error. Retrying in ${waitTime}ms... (Attempt ${i + 1}/${maxRetries})`);
-        await sleep(waitTime);
-        continue;
+      // If this was the last model, we stop and throw the error
+      if (i === models.length - 1) {
+        break;
       }
       
-      throw error;
+      // Otherwise, we continue to the next model immediately
+      console.log(`[AI Engine] Falling back to the next model...`);
+      continue;
     }
   }
-  throw lastError;
+
+  throw new Error(`Semua model AI (${models.length}) gagal memproses konten. Error terakhir: ${lastError?.message}`);
 }
 
 export const repurposeAllContent = async (content: string, tone: string = "professional") => {

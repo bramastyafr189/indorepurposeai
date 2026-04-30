@@ -45,7 +45,7 @@ async function generateWithRetry(prompt: string, tone: string) {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": "https://indorepurposeai.vercel.app",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
           "X-Title": "IndoRepurpose AI",
           "Content-Type": "application/json"
         },
@@ -78,8 +78,19 @@ async function generateWithRetry(prompt: string, tone: string) {
       }
 
       try {
-        const cleanedContent = content.replace(/```json/g, "").replace(/```/g, "").trim();
-        const results = JSON.parse(cleanedContent);
+        // More robust JSON extraction: find the first '{' and last '}'
+        const firstBrace = content.indexOf('{');
+        const lastBrace = content.lastIndexOf('}');
+        
+        if (firstBrace === -1 || lastBrace === -1) {
+          throw new Error("Teks hasil tidak mengandung format JSON yang valid.");
+        }
+        
+        const safeJson = content.slice(firstBrace, lastBrace + 1)
+          .replace(/\n/g, " ") // Replace real newlines with space to avoid breaking JSON strings
+          .replace(/\r/g, " ");
+
+        const results = JSON.parse(safeJson);
         
         console.log(`[AI Engine] Success using ${modelName}`);
         return {
@@ -88,7 +99,10 @@ async function generateWithRetry(prompt: string, tone: string) {
           modelId: modelId
         };
       } catch (parseError) {
-        throw new Error("Format JSON tidak valid.");
+        console.error("[AI Engine] JSON Parse Error. Raw content:", content);
+        // Show a snippet of the raw response to help debugging
+        const snippet = content.length > 100 ? content.substring(0, 100) + "..." : content;
+        throw new Error(`Model AI memberikan respon yang tidak bisa dibaca sebagai data: "${snippet}"`);
       }
 
     } catch (error: any) {
@@ -138,7 +152,13 @@ export const repurposeAllContent = async (content: string, tone: string = "profe
     
     Konten: ${content}
 
-    Kembalikan hasil dalam format JSON murni dengan kunci: x, linkedin, instagram, tiktok, newsletter, threads, highlights, blog.`;
+    ATURAN OUTPUT (WAJIB):
+    1. Kembalikan HASIL HANYA DALAM FORMAT JSON MURNI.
+    2. Kunci JSON: x, linkedin, instagram, tiktok, newsletter, threads, highlights, blog.
+    3. PENTING: Setiap nilai harus berupa SATU STRING TUNGGAL. 
+    4. JANGAN gunakan baris baru (newline) asli di tengah teks. Gunakan karakter "\\n" untuk pindah baris agar JSON tetap valid.
+    5. JANGAN gunakan markdown code blocks di dalam nilai JSON.
+    6. Gunakan single quote (') untuk tanda kutip di dalam teks agar tidak merusak double quote (") milik JSON.`;
 
   return await generateWithRetry(prompt, tone);
 };

@@ -525,7 +525,7 @@ export default function AdminClient() {
               { id: 'verifikasi', label: 'Verifikasi', icon: CheckCircle2, badge: transactions.length },
               { id: 'transaksi', label: 'Semua Transaksi', icon: HistoryIcon },
               { id: 'pengguna', label: 'Pengguna', icon: Users },
-              { id: 'laporan', label: 'Laporan', icon: HistoryIcon },
+              { id: 'laporan', label: 'Log', icon: HistoryIcon },
               { id: 'aduan', label: 'Aduan', icon: LifeBuoy },
               { id: 'mesin', label: 'Mesin AI', icon: Cpu },
             ].map((tab) => (
@@ -902,6 +902,12 @@ export default function AdminClient() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="space-y-6"
                   >
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl">
+                      <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <HistoryIcon size={22} className="text-blue-600" /> Log Aktivitas Konten
+                      </h3>
+                      <p className="text-sm text-slate-500">Monitor seluruh riwayat transformasi konten oleh pengguna.</p>
+                    </div>
                     {history.length > 0 ? (
                       <>
                         <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
@@ -1000,7 +1006,7 @@ export default function AdminClient() {
                         />
                       </>
                     ) : (
-                      <EmptyState message="Belum ada riwayat transformasi konten." />
+                      <EmptyState message="Belum ada log riwayat transformasi konten." />
                     )}
                   </motion.div>
                 )}

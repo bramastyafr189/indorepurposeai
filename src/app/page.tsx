@@ -1017,7 +1017,7 @@ export default function Home() {
                         onClick={() => loadFromHistory(item)}
                         className="group relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 p-5 md:p-7 rounded-[2.5rem] hover:border-blue-500/50 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6"
                       >
-                        <div className="flex items-center gap-5 flex-1 min-w-0">
+                        <div className="flex items-center gap-5 flex-1 min-w-0 overflow-hidden">
                           <div className={cn(
                             "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-3",
                             item.mode === 'url' 
@@ -1027,7 +1027,7 @@ export default function Home() {
                             {item.mode === 'url' ? <YoutubeIcon size={24} /> : <FileText size={24} />}
                           </div>
                           
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 overflow-hidden">
                             <div className="flex items-center gap-2 mb-1.5">
                               <span className={cn(
                                 "text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border",
@@ -1041,7 +1041,7 @@ export default function Home() {
                                 {item.tone}
                               </span>
                             </div>
-                            <h3 className="font-black text-lg md:text-xl text-slate-900 dark:text-white truncate leading-tight">
+                            <h3 className="font-black text-lg md:text-xl text-slate-900 dark:text-white line-clamp-1 break-all leading-tight">
                               {item.input}
                             </h3>
                             <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider flex items-center gap-2">

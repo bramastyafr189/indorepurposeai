@@ -27,7 +27,7 @@ const plans = [
     badge: 'Uji Coba'
   },
   { 
-    name: 'Starter', 
+    name: 'Plus', 
     price: '20.000', 
     description: 'Cocok untuk kreator yang baru mulai.',
     features: [
@@ -37,14 +37,14 @@ const plans = [
       'Arsip Proyek Cloud',
       'Dukungan Pusat Bantuan',
     ],
-    cta: 'Pilih Starter',
+    cta: 'Pilih Plus',
     highlight: false,
     icon: Zap,
     color: 'amber', 
     badge: 'Ekonomis'
   },
   { 
-    name: 'Plus', 
+    name: 'Pro', 
     price: '50.000', 
     description: 'Pilihan terbaik untuk kreator aktif.',
     features: [
@@ -53,16 +53,16 @@ const plans = [
       'Akses Semua Fitur AI',
       'Arsip Proyek Cloud',
       'Dukungan Pusat Bantuan',
-      'Lebih Hemat dari Starter',
+      'Lebih Hemat dari Plus',
     ],
-    cta: 'Pilih Plus',
+    cta: 'Pilih Pro',
     highlight: true,
     icon: Sparkles,
     color: 'blue', 
     badge: 'Paling Populer'
   },
   { 
-    name: 'Pro', 
+    name: 'Max', 
     price: '75.000', 
     description: 'Untuk kreator profesional & power user.',
     features: [
@@ -71,9 +71,9 @@ const plans = [
       'Akses Semua Fitur AI',
       'Arsip Proyek Cloud',
       'Dukungan Pusat Bantuan',
-      'Lebih Hemat dari Plus',
+      'Lebih Hemat dari Pro',
     ],
-    cta: 'Pilih Pro',
+    cta: 'Pilih Max',
     highlight: false,
     icon: Shield,
     color: 'indigo', 

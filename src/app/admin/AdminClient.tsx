@@ -116,11 +116,21 @@ export default function AdminClient() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const lastFetchRef = useRef<number>(0);
   const debouncedFetchData = () => {
+    const now = Date.now();
+    const COOLDOWN = 5000; // Minimal 5 seconds between fetches
+
     if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-    fetchTimeoutRef.current = setTimeout(() => {
-      fetchData();
-    }, 3000); // Wait 3 seconds of "silence" before fetching
+    
+    // If it's been more than 10s since last fetch, fetch now
+    if (now - lastFetchRef.current > 10000) {
+      fetchData(true); // background fetch
+    } else {
+      fetchTimeoutRef.current = setTimeout(() => {
+        fetchData(true); // background fetch
+      }, 3000);
+    }
   };
 
   useEffect(() => {
@@ -216,8 +226,10 @@ export default function AdminClient() {
     'blu': { name: 'blu by BCA Digital', logo: 'https://raw.githubusercontent.com/Zyknn/paymentlogo/main/Bank/Bank%20Logo/Blu%20BCA.png' }
   };
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    lastFetchRef.current = Date.now();
+    
     try {
       const [statsRes, verifyingRes, allTxRes, usersRes, historyRes, ticketsRes, aiModelsRes] = await Promise.all([
         getAdminStats(),
@@ -241,9 +253,9 @@ export default function AdminClient() {
         setIsAuthorized(false);
       }
     } catch (error) {
-      toast.error('Gagal mengambil data dashboard');
+      if (!isBackground) toast.error('Gagal mengambil data dashboard');
     }
-    setLoading(false);
+    if (!isBackground) setLoading(false);
   };
 
   const handleAddModel = async () => {
@@ -510,7 +522,7 @@ export default function AdminClient() {
                 />
               </div>
               <button 
-                onClick={fetchData}
+                onClick={() => fetchData()}
                 className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm group"
               >
                 <RefreshCcw size={20} className={cn("text-slate-500 transition-transform group-active:rotate-180", loading && "animate-spin")} />
@@ -746,9 +758,9 @@ export default function AdminClient() {
                                   <td className="px-8 py-5">
                                     <span className={cn(
                                       "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest",
-                                      tx.plan_name === 'Pro' ? "bg-indigo-100 text-indigo-600" :
-                                      tx.plan_name === 'Plus' ? "bg-blue-100 text-blue-600" :
-                                      tx.plan_name === 'Starter' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"
+                                      tx.plan_name === 'Max' ? "bg-indigo-100 text-indigo-600" :
+                                      tx.plan_name === 'Pro' ? "bg-blue-100 text-blue-600" :
+                                      tx.plan_name === 'Plus' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"
                                     )}>
                                       {tx.plan_name}
                                     </span>
@@ -844,9 +856,9 @@ export default function AdminClient() {
                                   <td className="px-8 py-5">
                                     <span className={cn(
                                       "px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em]",
-                                      user.plan_name === 'Pro' ? "bg-indigo-100 text-indigo-600" :
-                                      user.plan_name === 'Plus' ? "bg-blue-100 text-blue-600" :
-                                      user.plan_name === 'Starter' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"
+                                      user.plan_name === 'Max' ? "bg-indigo-100 text-indigo-600" :
+                                      user.plan_name === 'Pro' ? "bg-blue-100 text-blue-600" :
+                                      user.plan_name === 'Plus' ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"
                                     )}>
                                       {user.plan_name}
                                     </span>
@@ -1583,7 +1595,7 @@ export default function AdminClient() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Paket Layanan</label>
                   <div className="grid grid-cols-2 gap-3">
-                    {['Free', 'Starter', 'Plus', 'Pro'].map((plan) => (
+                    {['Free', 'Plus', 'Pro', 'Max'].map((plan) => (
                       <button
                         key={plan}
                         onClick={() => setEditForm({ ...editForm, plan_name: plan })}

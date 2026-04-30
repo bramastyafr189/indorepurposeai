@@ -34,13 +34,24 @@ async function sendTelegramNotification(text: string, photoUrl?: string, buttonU
       payload.text = text;
     }
 
-    // Add button if URL is provided
+    // Add button if URL is provided and it's not a localhost URL (Telegram rejects localhost)
     if (buttonUrl && buttonText) {
-      payload.reply_markup = {
-        inline_keyboard: [
-          [{ text: buttonText, url: buttonUrl }]
-        ]
-      };
+      const isLocalhost = buttonUrl.includes('localhost') || buttonUrl.includes('127.0.0.1');
+      
+      if (!isLocalhost) {
+        payload.reply_markup = {
+          inline_keyboard: [
+            [{ text: buttonText, url: buttonUrl }]
+          ]
+        };
+      } else {
+        // Append URL to text instead of button for localhost testing
+        if (photoUrl) {
+          payload.caption += `\n\n🔗 Admin Link: ${buttonUrl}`;
+        } else {
+          payload.text += `\n\n🔗 Admin Link: ${buttonUrl}`;
+        }
+      }
     }
 
     const response = await fetch(url, {
@@ -52,6 +63,12 @@ async function sendTelegramNotification(text: string, photoUrl?: string, buttonU
     const result = await response.json();
     if (!result.ok) {
       console.error('[Telegram Error]:', result.description);
+      // Fallback: If sendPhoto fails, try sending as a simple message
+      if (endpoint === 'sendPhoto') {
+        console.log('[Telegram] Falling back to sendMessage...');
+        const fallbackText = `${text}\n\n🖼 <b>Bukti:</b> ${photoUrl}`;
+        await sendTelegramNotification(fallbackText, undefined, buttonUrl, buttonText);
+      }
     }
   } catch (err) {
     console.error('[Telegram Fetch Error]:', err);
@@ -260,7 +277,7 @@ export async function getProfile() {
       .single();
 
     if (pendingTx && pendingTx.status === 'pending') {
-      const expiryTime = new Date(pendingTx.created_at).getTime() + 24 * 60 * 60 * 1000;
+      const expiryTime = new Date(pendingTx.created_at).getTime() + 2 * 60 * 60 * 1000;
       if (new Date().getTime() > expiryTime) {
         // Auto-expire!
         await supabase
@@ -278,7 +295,7 @@ export async function getProfile() {
         ...profile,
         email: user.email,
         created_at: user.created_at,
-        pendingTransaction: (pendingTx && (pendingTx.status === 'pending' || pendingTx.status === 'verifying')) ? pendingTx : null
+        pendingTransaction: (pendingTx && (pendingTx.status === 'pending' || pendingTx.status === 'verifying' || pendingTx.status === 'expired')) ? pendingTx : null
       }
     };
   } catch (error: any) {
@@ -303,7 +320,7 @@ export async function getTransactionHistory() {
     // Check for any 'pending' transactions in history that should be 'expired'
     const updatedData = await Promise.all((data || []).map(async (tx) => {
       if (tx.status === 'pending') {
-        const expiryTime = new Date(tx.created_at).getTime() + 24 * 60 * 60 * 1000;
+        const expiryTime = new Date(tx.created_at).getTime() + 2 * 60 * 60 * 1000;
         if (new Date().getTime() > expiryTime) {
           await supabase.from('transactions').update({ status: 'expired' }).eq('id', tx.id);
           return { ...tx, status: 'expired' };
@@ -365,6 +382,21 @@ export async function initiateCheckout(planName: string, amount: number, payment
       .single();
 
     if (error) throw error;
+
+    // 4. Send Telegram Notification for New Order
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const message = `
+<b>🛒 Pesanan Baru Dimulai!</b>
+━━━━━━━━━━━━━━━━━━
+<b>User:</b> ${user.email}
+<b>Paket:</b> ${planName}
+<b>Total:</b> Rp ${(amount + uniqueCode).toLocaleString('id-ID')}
+<b>Status:</b> Menunggu Pembayaran
+
+<i>User baru saja membuka halaman instruksi pembayaran.</i>
+    `;
+    await sendTelegramNotification(message, undefined, `${siteUrl}/admin`, '👉 Buka Dashboard Admin');
+
     return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -492,9 +524,9 @@ export async function approveTransaction(transactionId: string) {
 
     // 3. Determine credits
     let creditsToAdd = 0;
-    if (tx.plan_name === 'Pro') creditsToAdd = 50;
-    else if (tx.plan_name === 'Plus') creditsToAdd = 30;
-    else if (tx.plan_name === 'Starter') creditsToAdd = 10;
+    if (tx.plan_name === 'Max') creditsToAdd = 50;
+    else if (tx.plan_name === 'Pro') creditsToAdd = 30;
+    else if (tx.plan_name === 'Plus') creditsToAdd = 10;
     else creditsToAdd = 10; // Default
 
     // 4. Calculate New Expiry Date (Stacking Logic)
@@ -765,7 +797,7 @@ export async function updateTransactionProof(transactionId: string, proofUrl: st
 
     if (tx) {
       const amount = (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID');
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
       const adminLink = `${siteUrl}/admin`;
       
       const message = `
@@ -820,6 +852,19 @@ export async function createTicket(subject: string, message: string) {
       }]);
 
     if (msgError) throw msgError;
+
+    // 3. Send Telegram Notification
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const tgMessage = `
+<b>🎫 Tiket Aduan Baru!</b>
+━━━━━━━━━━━━━━━━━━
+<b>User:</b> ${user.email}
+<b>Subjek:</b> ${subject}
+<b>Pesan:</b> <i>${message}</i>
+
+<i>Silakan balas melalui dashboard admin.</i>
+    `;
+    await sendTelegramNotification(tgMessage, undefined, `${siteUrl}/admin`, '👉 Balas di Admin');
 
     return { success: true };
   } catch (error: any) {

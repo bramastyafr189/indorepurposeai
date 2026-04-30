@@ -43,9 +43,9 @@ import Link from 'next/link';
 type Step = 'method' | 'confirm' | 'instructions';
 
 const PLANS = {
-  'Starter': { price: 20000, color: 'amber' },
-  'Plus': { price: 50000, color: 'blue' },
-  'Pro': { price: 75000, color: 'indigo' }
+  'Plus': { price: 20000, color: 'amber' },
+  'Pro': { price: 50000, color: 'blue' },
+  'Max': { price: 75000, color: 'indigo' }
 } as const;
 
 const METHODS = BUSINESS_CONFIG.payment.methods;
@@ -61,6 +61,7 @@ export default function CheckoutPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showWAHelp, setShowWAHelp] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -69,7 +70,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (step === 'instructions' && transaction) {
-      const expiryTime = new Date(transaction.created_at).getTime() + 24 * 60 * 60 * 1000;
+      const expiryTime = new Date(transaction.created_at).getTime() + 2 * 60 * 60 * 1000;
       
       const timer = setInterval(() => {
         const now = new Date().getTime();
@@ -164,6 +165,13 @@ export default function CheckoutPage() {
     setConfirming(true);
     const res = await confirmPaymentSent(transaction.id);
     if (res.success) {
+      // Broadcast to Admin for payment confirmation (without proof yet)
+      supabase.channel('admin-global-updates').send({
+        type: 'broadcast',
+        event: 'new-transaction',
+        payload: { order_id: transaction.order_id, type: 'manual_confirmation' }
+      });
+
       toast.success('Konfirmasi berhasil!');
       router.push('/profile');
     } else {
@@ -224,7 +232,7 @@ export default function CheckoutPage() {
   };
 
   const handleCancel = async () => {
-    if (!confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) return;
+    setShowCancelModal(false);
     
     setConfirming(true);
     const res = await cancelTransaction(transaction.id);
@@ -389,8 +397,28 @@ export default function CheckoutPage() {
                 key="step3"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="grid grid-cols-1 lg:grid-cols-5 gap-12"
+                className="w-full"
               >
+                {transaction.status === 'expired' ? (
+                  <div className="max-w-xl mx-auto text-center space-y-8 py-12">
+                    <div className="w-24 h-24 bg-red-50 dark:bg-red-900/20 rounded-[2rem] flex items-center justify-center text-red-500 mx-auto">
+                      <Clock size={48} />
+                    </div>
+                    <div>
+                      <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Pesanan Kedaluwarsa</h1>
+                      <p className="text-slate-500 font-medium leading-relaxed">
+                        Batas waktu pembayaran 2 jam telah habis. Pesanan ini sudah tidak berlaku secara otomatis oleh sistem.
+                      </p>
+                    </div>
+                    <Link 
+                      href="/#pricing"
+                      className="inline-flex items-center gap-3 px-10 py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                    >
+                      Buat Pesanan Baru <ChevronRight size={18} />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
                 <div className="lg:col-span-3 space-y-8">
                   <header>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase tracking-widest mb-4">
@@ -550,7 +578,7 @@ export default function CheckoutPage() {
 
                     {transaction.status === 'pending' && (
                       <button 
-                        onClick={handleCancel}
+                        onClick={() => setShowCancelModal(true)}
                         disabled={confirming}
                         className="w-full py-4 text-slate-400 hover:text-red-500 font-black text-xs uppercase tracking-widest transition-all text-center"
                       >
@@ -569,7 +597,7 @@ export default function CheckoutPage() {
                         {timeLeft !== null ? formatTimeLeft(timeLeft) : 'Menghitung...'}
                       </p>
                       <p className="text-[8px] text-slate-500 font-bold uppercase mt-1">
-                        Batas: {new Date(new Date(transaction.created_at).getTime() + 24 * 60 * 60 * 1000).toLocaleString('id-ID', {
+                        Batas: {new Date(new Date(transaction.created_at).getTime() + 2 * 60 * 60 * 1000).toLocaleString('id-ID', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric',
@@ -580,6 +608,8 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -587,6 +617,55 @@ export default function CheckoutPage() {
       </main>
 
       <Footer />
+
+      {/* Custom Confirmation Modal */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCancelModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800"
+            >
+              <div className="space-y-6">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center text-red-500">
+                  <Clock size={32} />
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Batalkan Pesanan?</h3>
+                  <p className="text-slate-500 font-medium leading-relaxed">
+                    Pesanan Anda akan dibatalkan secara permanen. Apakah Anda yakin?
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    onClick={() => setShowCancelModal(false)}
+                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Lanjutkan Bayar
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="flex-1 py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-500/25 active:scale-95"
+                  >
+                    Ya, Batalkan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

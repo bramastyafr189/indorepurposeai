@@ -35,6 +35,13 @@ export default function ProfilePage() {
   const [cancelling, setCancelling] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [showWAHelp, setShowWAHelp] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    txId: string | null;
+  }>({
+    isOpen: false,
+    txId: null
+  });
   const router = useRouter();
   const supabase = createClient();
   const printRef = useRef<HTMLDivElement>(null);
@@ -65,7 +72,7 @@ export default function ProfilePage() {
   // Timer for pending transaction
   useEffect(() => {
     if (profile?.pendingTransaction && profile.pendingTransaction.status === 'pending') {
-      const expiryTime = new Date(profile.pendingTransaction.created_at).getTime() + 24 * 60 * 60 * 1000;
+      const expiryTime = new Date(profile.pendingTransaction.created_at).getTime() + 2 * 60 * 60 * 1000;
       
       const timer = setInterval(() => {
         const now = new Date().getTime();
@@ -130,8 +137,10 @@ export default function ProfilePage() {
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'long',
-      year: 'numeric'
-    });
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).replace(/\./g, ':');
   };
 
   const formatTimeLeft = (ms: number) => {
@@ -143,7 +152,7 @@ export default function ProfilePage() {
   };
 
   const handleCancelTx = async (id: string) => {
-    if (!confirm('Batalkan pesanan ini?')) return;
+    setConfirmModal({ isOpen: false, txId: null });
     setCancelling(true);
     const res = await cancelTransaction(id);
     if (res.success) {
@@ -351,10 +360,16 @@ export default function ProfilePage() {
                                 <Clock size={20} className="animate-pulse" />
                               </div>
                               <div>
-                                <h3 className="text-lg font-black text-amber-900 dark:text-amber-400 uppercase tracking-tight leading-none">
-                                  Menunggu Pembayaran
+                                <h3 className={cn(
+                                  "text-lg font-black uppercase tracking-tight leading-none",
+                                  profile.pendingTransaction.status === 'expired' ? "text-red-900 dark:text-red-400" : "text-amber-900 dark:text-amber-400"
+                                )}>
+                                  {profile.pendingTransaction.status === 'expired' ? 'Pesanan Kedaluwarsa' : 'Menunggu Pembayaran'}
                                 </h3>
-                                <p className="text-xs font-bold text-amber-600 dark:text-amber-500 mt-1 uppercase tracking-widest">
+                                <p className={cn(
+                                  "text-xs font-bold mt-1 uppercase tracking-widest",
+                                  profile.pendingTransaction.status === 'expired' ? "text-red-600 dark:text-red-500" : "text-amber-600 dark:text-amber-500"
+                                )}>
                                   ID: {profile.pendingTransaction.order_id.slice(-8)}
                                 </p>
                               </div>
@@ -386,7 +401,21 @@ export default function ProfilePage() {
                           </div>
 
                           <div className="flex flex-wrap gap-4">
-                            {profile.pendingTransaction.status === 'pending' ? (
+                            {profile.pendingTransaction.status === 'expired' ? (
+                              <div className="w-full space-y-4">
+                                <div className="p-6 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 rounded-3xl">
+                                  <p className="text-xs text-red-600 dark:text-red-400 font-medium leading-relaxed">
+                                    Batas waktu pembayaran 2 jam telah habis. Silakan buat pesanan baru jika Anda ingin melanjutkan.
+                                  </p>
+                                </div>
+                                <Link 
+                                  href="/#pricing"
+                                  className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-sm uppercase tracking-widest transition-all"
+                                >
+                                  Buat Pesanan Baru <ChevronRight size={18} />
+                                </Link>
+                              </div>
+                            ) : profile.pendingTransaction.status === 'pending' ? (
                               <>
                                 <Link 
                                   href={`/checkout/${profile.pendingTransaction.plan_name}`}
@@ -395,7 +424,7 @@ export default function ProfilePage() {
                                   Selesaikan Pembayaran <ChevronRight size={18} />
                                 </Link>
                                 <button 
-                                  onClick={() => handleCancelTx(profile.pendingTransaction.id)}
+                                  onClick={() => setConfirmModal({ isOpen: true, txId: profile.pendingTransaction.id })}
                                   disabled={cancelling}
                                   className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-500 hover:text-red-500 rounded-2xl font-black text-sm uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700"
                                 >
@@ -575,7 +604,12 @@ export default function ProfilePage() {
                             <div>
                               <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Paket {tx.plan_name}</p>
                               <p className="text-xs text-slate-500 font-medium lowercase">
-                                {tx.order_id.slice(-8)} • {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                {tx.order_id.slice(-8)} • {new Date(tx.created_at).toLocaleDateString('id-ID', { 
+                                  day: 'numeric', 
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }).replace(/\./g, ':')}
                               </p>
                             </div>
                           </div>
@@ -768,6 +802,59 @@ export default function ProfilePage() {
       <div className="print:hidden">
         <Footer />
       </div>
+
+      {/* Custom Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal({ isOpen: false, txId: null })}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                <AlertCircle size={120} className="text-red-500" />
+              </div>
+              
+              <div className="relative space-y-6">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center text-red-500">
+                  <AlertCircle size={32} />
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Batalkan Pesanan?</h3>
+                  <p className="text-slate-500 font-medium leading-relaxed">
+                    Apakah Anda yakin ingin membatalkan pesanan ini? Aksi ini tidak dapat dibatalkan.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    onClick={() => setConfirmModal({ isOpen: false, txId: null })}
+                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Kembali
+                  </button>
+                  <button
+                    onClick={() => confirmModal.txId && handleCancelTx(confirmModal.txId)}
+                    className="flex-1 py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-500/25 active:scale-95"
+                  >
+                    Ya, Batalkan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

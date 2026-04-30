@@ -23,7 +23,24 @@ async function getOrderedModels() {
   return data;
 }
 
-async function generateWithRetry(prompt: string, tone: string) {
+async function logAIError(modelName: string, errorMessage: string, inputPreview: string, userId?: string, rawOutput?: string) {
+  try {
+    const supabase = createAdminClient();
+    await supabase.from('ai_errors').insert([
+      {
+        user_id: userId,
+        model_name: modelName,
+        error_message: errorMessage,
+        input_preview: inputPreview.substring(0, 500), // Limit preview size
+        raw_output: rawOutput // This will be stored if the column exists
+      }
+    ]);
+  } catch (err) {
+    console.error('[AI Engine] Failed to log error to database:', err);
+  }
+}
+
+async function generateWithRetry(prompt: string, tone: string, userId?: string) {
   let lastError: any;
   const models = await getOrderedModels();
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -37,6 +54,7 @@ async function generateWithRetry(prompt: string, tone: string) {
     const modelConfig = models[i];
     const modelName = modelConfig.model_name;
     const modelId = modelConfig.id;
+    let content = "";
     
     try {
       console.log(`[AI Engine] Attempting with model (${i + 1}/${models.length}): ${modelName}`);
@@ -71,23 +89,37 @@ async function generateWithRetry(prompt: string, tone: string) {
         throw new Error("OpenRouter tidak mengembalikan hasil yang valid.");
       }
 
-      const content = data.choices[0].message.content;
+      content = data.choices[0].message.content;
 
       if (!content) {
         throw new Error("Model AI mengembalikan respon kosong.");
       }
 
       try {
-        // More robust JSON extraction: find the first '{' and last '}'
-        const firstBrace = content.indexOf('{');
-        const lastBrace = content.lastIndexOf('}');
+        // More robust JSON extraction
+        let jsonContent = content.trim();
+        
+        // Remove markdown code blocks if present
+        if (jsonContent.includes("```")) {
+          // Try to extract content between ```json and ``` or just ``` and ```
+          const match = jsonContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (match) {
+            jsonContent = match[1];
+          }
+        }
+
+        const firstBrace = jsonContent.indexOf('{');
+        const lastBrace = jsonContent.lastIndexOf('}');
         
         if (firstBrace === -1 || lastBrace === -1) {
           throw new Error("Teks hasil tidak mengandung format JSON yang valid.");
         }
         
-        const safeJson = content.slice(firstBrace, lastBrace + 1)
-          .replace(/\n/g, " ") // Replace real newlines with space to avoid breaking JSON strings
+        const rawJson = jsonContent.slice(firstBrace, lastBrace + 1);
+        
+        // Try to fix some common JSON issues before parsing
+        const safeJson = rawJson
+          .replace(/\n/g, " ") 
           .replace(/\r/g, " ");
 
         const results = JSON.parse(safeJson);
@@ -100,6 +132,7 @@ async function generateWithRetry(prompt: string, tone: string) {
         };
       } catch (parseError) {
         console.error("[AI Engine] JSON Parse Error. Raw content:", content);
+        await logAIError(modelName, `JSON Parse Error: ${parseError instanceof Error ? parseError.message : 'Unknown'}`, prompt, userId, content);
         // Show a snippet of the raw response to help debugging
         const snippet = content.length > 100 ? content.substring(0, 100) + "..." : content;
         throw new Error(`Model AI memberikan respon yang tidak bisa dibaca sebagai data: "${snippet}"`);
@@ -108,6 +141,9 @@ async function generateWithRetry(prompt: string, tone: string) {
     } catch (error: any) {
       lastError = error;
       console.warn(`[AI Engine] Model ${modelName} failed: ${error.message}`);
+      
+      // Log the individual model error to database
+      await logAIError(modelName, error.message, prompt, userId, content || "");
       
       // If this was the last model, we stop and throw the error
       if (i === models.length - 1) {
@@ -120,10 +156,10 @@ async function generateWithRetry(prompt: string, tone: string) {
     }
   }
 
-  throw new Error(`Semua model AI (${models.length}) gagal memproses konten. Error terakhir: ${lastError?.message}`);
+  throw new Error("Maaf, semua sistem AI kami sedang sibuk karena trafik tinggi. Tenang, kredit Anda tetap utuh. Silakan coba lagi dalam beberapa saat.");
 }
 
-export const repurposeAllContent = async (content: string, tone: string = "professional") => {
+export const repurposeAllContent = async (content: string, tone: string = "professional", userId?: string) => {
   const toneInstructions: Record<string, string> = {
     professional: "Gunakan gaya bahasa Profesional yang LUWES. Hindari kata-kata kaku seperti 'Selain itu' atau 'Terlebih lagi'. Gunakan istilah industri secara natural seperti seorang ahli yang sedang berbicara di podcast.",
     casual: "Gunakan gaya bahasa Santai seperti sedang ngobrol di warkop. Gunakan sapaan akrab, jangan kaku, boleh gunakan kata 'kita' atau 'lo/gue' jika cocok. Fokus pada keakraban.",
@@ -141,29 +177,30 @@ export const repurposeAllContent = async (content: string, tone: string = "profe
     
     INSTRUKSI GAYA BAHASA: ${selectedTone}
 
-    1. X (Twitter) Thread: Buatlah rangkaian 3-5 tweet LENGKAP yang saling bersambung. Wajib tuliskan isi Tweet 1, Tweet 2, dst. secara berurutan dalam satu teks panjang. Pastikan ada hook di tweet pertama.
+    1. X (Twitter) Thread: Buatlah rangkaian minimal 5 tweet yang mendalam dan saling bersambung. WAJIB gunakan format penomoran yang jelas seperti [1/5], [2/5], dst. Pastikan Tweet 1 adalah Hook yang sangat menarik, Tweet 2-4 adalah inti pembahasan detail, dan Tweet 5 adalah kesimpulan/CTA. JANGAN berikan hasil yang pendek atau hanya satu tweet.
     2. Postingan LinkedIn: Profesional dan berbobot. Gunakan struktur: Hook menarik -> Konteks/Masalah -> Solusi/Pembahasan mendalam -> 3-5 Key Takeaways (bullet points) -> Pertanyaan penutup (CTA).
     3. Instagram: Buat caption yang bercerita (storytelling), sertakan 3 ide visual yang sangat mendetail untuk setiap slide, dan 10 hashtag strategis.
     4. TikTok Viral Script: Script lengkap dengan Hook 3 detik yang memicu rasa penasaran, Narasi VO yang cepat dan padat, serta petunjuk visual/transisi yang menarik.
     5. Newsletter: Buat email yang hangat dan personal. Berikan ringkasan materi yang memberikan nilai tambah (value) bagi pembaca, bukan sekadar rangkuman biasa.
-    6. Threads: Tulis dalam gaya 'storytelling' pendek yang mengundang diskusi aktif. Gunakan pertanyaan yang menggugah opini di akhir teks.
+    6. Threads: Tulis dalam gaya 'storytelling' yang sangat personal dan autentik. Mulailah dengan opini yang kuat, keresahan, atau POV (Point of View) yang unik terkait konten. Berikan pembahasan singkat yang 'ngena' dan diakhiri dengan pertanyaan terbuka yang memancing perdebatan atau diskusi panjang. JANGAN gunakan gaya bahasa yang terlalu kaku atau formal.
     7. Video Highlights: Identifikasi segmen paling penting atau viral (3-15 segmen, sesuaikan dengan durasi dan kepadatan isi konten). Gunakan format: [MM:SS - MM:SS] | Judul Segmen | Penjelasan. BERIKAN JARAK 2 BARIS (DOUBLE NEWLINE) di antara setiap segmen agar tampilan sangat rapi dan mudah dibaca.
-    8. SEO Blog Post: Tulis artikel blog profesional yang mendalam (minimal 800 kata). Wajib gunakan struktur HTML (H1, H2, H3), berikan paragraf pembuka yang kuat, pembahasan poin demi poin, dan kesimpulan. Sertakan Meta Description dan Target Keywords.
+    8. SEO Blog Post: Tulis artikel blog profesional yang mendalam (400-600 kata). Wajib gunakan struktur HTML (H1, H2, H3), berikan paragraf pembuka yang kuat, pembahasan poin demi poin, dan kesimpulan. Sertakan Meta Description dan Target Keywords.
     
     Konten: ${content}
 
-    ATURAN OUTPUT (WAJIB):
+    ATURAN OUTPUT (WAJIB - JANGAN DILANGGAR):
     1. Kembalikan HASIL HANYA DALAM FORMAT JSON MURNI.
-    2. Kunci JSON: x, linkedin, instagram, tiktok, newsletter, threads, highlights, blog.
-    3. PENTING: Setiap nilai harus berupa SATU STRING TUNGGAL. 
-    4. JANGAN gunakan baris baru (newline) asli di tengah teks. Gunakan karakter "\\n" untuk pindah baris agar JSON tetap valid.
-    5. JANGAN gunakan markdown code blocks di dalam nilai JSON.
-    6. Gunakan single quote (') untuk tanda kutip di dalam teks agar tidak merusak double quote (") milik JSON.`;
+    2. JANGAN sertakan teks pembuka, penjelasan, atau penutup apa pun di luar blok JSON.
+    3. Kunci JSON: x, linkedin, instagram, tiktok, newsletter, threads, highlights, blog.
+    4. PENTING: Setiap nilai harus berupa SATU STRING TUNGGAL. 
+    5. JANGAN gunakan baris baru (newline) asli di tengah teks. Gunakan karakter "\\n" untuk pindah baris agar JSON tetap valid.
+    6. JANGAN gunakan markdown code blocks di dalam nilai JSON.
+    7. Gunakan single quote (') untuk tanda kutip di dalam teks agar tidak merusak double quote (") milik JSON.`;
 
-  return await generateWithRetry(prompt, tone);
+  return await generateWithRetry(prompt, tone, userId);
 };
 
-export const repurposeContent = async (content: string, platform: 'x' | 'linkedin' | 'instagram' | 'tiktok' | 'newsletter' | 'threads' | 'highlights' | 'blog', tone: string = "professional") => {
-  const { results } = await repurposeAllContent(content, tone);
+export const repurposeContent = async (content: string, platform: 'x' | 'linkedin' | 'instagram' | 'tiktok' | 'newsletter' | 'threads' | 'highlights' | 'blog', tone: string = "professional", userId?: string) => {
+  const { results } = await repurposeAllContent(content, tone, userId);
   return results[platform];
 };

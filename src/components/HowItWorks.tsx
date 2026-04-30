@@ -52,7 +52,7 @@ export function HowItWorks() {
             viewport={{ once: true }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 shadow-sm text-blue-600 dark:text-blue-400 mb-6 font-black text-[10px] uppercase tracking-[0.3em] border border-blue-100 dark:border-blue-800"
           >
-            <Sparkles size={14} /> Workflow Otomatis
+            <Sparkles size={14} /> Automated Workflow
           </motion.div>
           
           <motion.h2 

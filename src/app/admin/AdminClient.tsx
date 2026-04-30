@@ -63,14 +63,16 @@ import {
   getAIModelsAdmin,
   createAIModelAdmin,
   updateAIModelAdmin,
-  deleteAIModelAdmin
+  deleteAIModelAdmin,
+  getAIErrorsAdmin,
+  clearAIErrorsAdmin
 } from '../actions';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-type TabType = 'overview' | 'verifikasi' | 'transaksi' | 'pengguna' | 'laporan' | 'aduan' | 'mesin';
+type TabType = 'overview' | 'verifikasi' | 'transaksi' | 'pengguna' | 'laporan' | 'aduan' | 'mesin' | 'ai_errors';
 
 export default function AdminClient() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -94,6 +96,8 @@ export default function AdminClient() {
   const [selectedModel, setSelectedModel] = useState<any>(null);
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const [modelForm, setModelForm] = useState({ model_name: '', priority: 1, is_active: true });
+  const [aiErrors, setAiErrors] = useState<any[]>([]);
+  const [clearingErrors, setClearingErrors] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean,
     title: string,
@@ -231,14 +235,15 @@ export default function AdminClient() {
     lastFetchRef.current = Date.now();
     
     try {
-      const [statsRes, verifyingRes, allTxRes, usersRes, historyRes, ticketsRes, aiModelsRes] = await Promise.all([
+      const [statsRes, verifyingRes, allTxRes, usersRes, historyRes, ticketsRes, aiModelsRes, aiErrorsRes] = await Promise.all([
         getAdminStats(),
         getVerifyingTransactions(),
         getAllTransactions(),
         getAllUsers(),
         getAllHistoryAdmin(),
         getAllTicketsAdmin(),
-        getAIModelsAdmin()
+        getAIModelsAdmin(),
+        getAIErrorsAdmin()
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
@@ -248,6 +253,11 @@ export default function AdminClient() {
       if (historyRes.success) setHistory(historyRes.data || []);
       if (ticketsRes && (ticketsRes as any).success) setTickets((ticketsRes as any).data || []);
       if (aiModelsRes.success) setAiModels(aiModelsRes.data || []);
+      if (aiErrorsRes.success) {
+        setAiErrors(aiErrorsRes.data || []);
+      } else {
+        toast.error('Gagal memuat log AI: ' + aiErrorsRes.error);
+      }
 
       if (!statsRes.success && statsRes.error === 'Unauthorized') {
         setIsAuthorized(false);
@@ -318,6 +328,26 @@ export default function AdminClient() {
     });
   };
 
+  const handleClearAIErrors = async () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Bersihkan Log Error?',
+      message: 'Semua riwayat kesalahan AI akan dihapus secara permanen.',
+      type: 'danger',
+      onConfirm: async () => {
+        setClearingErrors(true);
+        const res = await clearAIErrorsAdmin();
+        if (res.success) {
+          toast.success('Log error berhasil dibersihkan');
+          fetchData(true);
+        } else {
+          toast.error('Gagal membersihkan log: ' + res.error);
+        }
+        setClearingErrors(false);
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
 
   const handleApprove = async (id: string) => {
     setConfirmModal({
@@ -540,6 +570,7 @@ export default function AdminClient() {
               { id: 'laporan', label: 'Log', icon: HistoryIcon },
               { id: 'aduan', label: 'Aduan', icon: LifeBuoy },
               { id: 'mesin', label: 'Mesin AI', icon: Cpu },
+              { id: 'ai_errors', label: 'AI Errors', icon: ShieldAlert, badge: aiErrors.length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1231,6 +1262,77 @@ export default function AdminClient() {
                         <div className="py-20 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
                           <Cpu size={48} className="text-slate-200 mb-4" />
                           <p className="text-slate-500 font-bold">Belum ada model AI yang terkonfigurasi.</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+                {activeTab === 'ai_errors' && (
+                  <motion.div
+                    key="ai_errors"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl">
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <ShieldAlert className="text-red-500" /> Log Kesalahan AI
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          Daftar kegagalan teknis dari penyedia AI untuk kebutuhan audit dan debugging.
+                        </p>
+                      </div>
+                      <button 
+                        onClick={handleClearAIErrors}
+                        disabled={clearingErrors || aiErrors.length === 0}
+                        className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/20 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+                      >
+                        {clearingErrors ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                        Bersihkan Log
+                      </button>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Waktu</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Model</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Pesan Kesalahan</th>
+                              <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Input Preview</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-800 text-sm">
+                            {aiErrors.map((err) => (
+                              <tr key={err.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="px-8 py-5 whitespace-nowrap text-slate-500 font-medium">
+                                  {new Date(err.created_at).toLocaleString('id-ID', { 
+                                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+                                  }).replace(/\./g, ':')}
+                                </td>
+                                <td className="px-8 py-5">
+                                  <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                    {err.model_name}
+                                  </span>
+                                </td>
+                                <td className="px-8 py-5">
+                                  <p className="text-red-500 font-bold max-w-xs break-words">{err.error_message}</p>
+                                </td>
+                                <td className="px-8 py-5">
+                                  <p className="text-slate-400 italic text-xs max-w-xs truncate">{err.input_preview}</p>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {aiErrors.length === 0 && (
+                        <div className="py-20 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
+                          <CheckCircle2 size={48} className="text-emerald-500 mb-4 opacity-20" />
+                          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Semua Sistem AI Lancar</p>
                         </div>
                       )}
                     </div>

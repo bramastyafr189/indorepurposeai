@@ -134,7 +134,7 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
     }
 
     // 3. Call AI Engine
-    const { results, modelId } = await repurposeAllContent(sourceContent, tone);
+    const { results, modelId } = await repurposeAllContent(sourceContent, tone, user.id);
 
     // 4. Save to Supabase & Deduct Credit
     const { error: saveError } = await supabase
@@ -1055,6 +1055,47 @@ export async function deleteAIModelAdmin(id: string) {
       .from('ai_models')
       .delete()
       .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getAIErrorsAdmin() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  // Use Admin Client to bypass RLS for logs
+  const adminSupabase = createAdminClient();
+  try {
+    const { data, error } = await adminSupabase
+      .from('ai_errors')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function clearAIErrorsAdmin() {
+  const supabase = await createClient();
+  const isAdmin = await checkIsAdmin(supabase);
+  if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+  // Use Admin Client to bypass RLS for logs
+  const adminSupabase = createAdminClient();
+  try {
+    const { error } = await adminSupabase
+      .from('ai_errors')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
 
     if (error) throw error;
     return { success: true };

@@ -798,7 +798,7 @@ export async function createTicket(subject: string, message: string) {
     `;
     await sendTelegramNotification(tgMessage, undefined, `${siteUrl}/admin`, '👉 Balas di Admin');
 
-    return { success: true };
+    return { success: true, data: ticket };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -859,13 +859,14 @@ export async function updateTicketStatus(ticketId: string, status: string) {
   if (!isAdmin) return { success: false, error: 'Unauthorized' };
 
   try {
-    const { error } = await supabase
+    const { data: ticket } = await supabase
       .from('tickets')
       .update({ status })
-      .eq('id', ticketId);
+      .eq('id', ticketId)
+      .select('user_id')
+      .single();
 
-    if (error) throw error;
-    return { success: true };
+    return { success: true, userId: ticket?.user_id };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

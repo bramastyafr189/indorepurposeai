@@ -58,6 +58,8 @@ export default function Home() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [ticketMessages, setTicketMessages] = useState<any[]>([]);
   const [replyMessage, setReplyMessage] = useState("");
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [unreadTicketIds, setUnreadTicketIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<'all' | 'url' | 'text'>('all');
   const [displayLimit, setDisplayLimit] = useState(5);
@@ -82,6 +84,36 @@ export default function Home() {
     }
     return () => clearInterval(interval);
   }, [selectedTicketId, showSupportModal]);
+
+  useEffect(() => {
+    if (currentUser) {
+      const supabase = createClient();
+      const channel = supabase
+        .channel(`user-updates:${currentUser.id}`)
+        .on('broadcast', { event: 'ticket-status-updated' }, () => {
+          console.log('Global ticket status update received');
+          fetchTickets();
+          setHasUnreadMessages(true);
+        })
+        .on('broadcast', { event: 'new-chat-message' }, (envelope) => {
+          const payload = envelope.payload;
+          const isViewingThisTicket = showSupportModal && selectedTicketId === payload?.ticketId;
+          
+          if (!isViewingThisTicket) {
+            setHasUnreadMessages(true);
+            if (payload?.ticketId) {
+              setUnreadTicketIds(prev => [...new Set([...prev, payload.ticketId])]);
+            }
+          }
+          fetchTickets();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     fetchHistory();
@@ -219,6 +251,12 @@ export default function Home() {
       });
       setTicketForm({ subject: '', message: '' });
       fetchTickets();
+      
+      // Switch to history tab and automatically select the new ticket
+      setPreviewData(prev => ({ ...prev, platform: 'history' }));
+      if (res.data?.id) {
+        selectTicket(res.data.id);
+      }
     } else {
       toast.error('Gagal mengirim aduan');
     }
@@ -246,6 +284,12 @@ export default function Home() {
   };
 
   const [isWaitingForAdmin, setIsWaitingForAdmin] = useState(false);
+
+  const selectTicket = (id: string) => {
+    setSelectedTicketId(id);
+    setUnreadTicketIds(prev => prev.filter(tid => tid !== id));
+    loadTicketMessages(id);
+  };
 
   const handleSendUserReply = async () => {
     if (!selectedTicketId || !replyMessage.trim()) return;
@@ -285,6 +329,10 @@ export default function Home() {
         .on('broadcast', { event: 'new-chat-message' }, () => {
           console.log('New chat message broadcast received by User');
           loadTicketMessages(selectedTicketId);
+        })
+        .on('broadcast', { event: 'ticket-status-updated' }, () => {
+          console.log('Ticket status updated broadcast received by User');
+          fetchTickets();
         })
         .subscribe();
 
@@ -647,10 +695,18 @@ export default function Home() {
 
       {/* Floating Support Button */}
       <button 
-        onClick={() => setShowSupportModal(true)}
+        onClick={() => {
+          setShowSupportModal(true);
+          setHasUnreadMessages(false);
+        }}
         className="fixed bottom-8 right-8 z-[90] w-14 h-14 md:w-16 md:h-16 bg-blue-600 text-white rounded-full shadow-2xl shadow-blue-500/40 flex items-center justify-center hover:scale-110 hover:rotate-12 transition-all duration-300 group"
       >
         <LifeBuoy size={28} className="group-hover:animate-pulse" />
+        
+        {hasUnreadMessages && (
+          <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full animate-bounce shadow-lg" />
+        )}
+
         <div className="absolute right-full mr-4 px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
           Pusat Bantuan
         </div>
@@ -843,14 +899,22 @@ export default function Home() {
                         tickets.map((ticket) => (
                           <div 
                             key={ticket.id} 
-                            onClick={() => {
-                              setSelectedTicketId(ticket.id);
-                              loadTicketMessages(ticket.id);
-                            }}
-                            className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 group hover:border-blue-500/30 transition-all cursor-pointer"
+                            onClick={() => selectTicket(ticket.id)}
+                            className={cn(
+                              "relative p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border group hover:border-blue-500/30 transition-all cursor-pointer",
+                              unreadTicketIds.includes(ticket.id) ? "border-blue-500/50 ring-2 ring-blue-500/5 shadow-lg shadow-blue-500/5" : "border-slate-100 dark:border-slate-800"
+                            )}
                           >
+                            {unreadTicketIds.includes(ticket.id) && (
+                              <div className="absolute top-2 right-2 flex h-3.5 w-3.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600 border-2 border-white dark:border-slate-900"></span>
+                              </div>
+                            )}
                             <div className="flex items-start justify-between mb-3">
-                              <h4 className="font-black text-slate-900 dark:text-white pr-4 group-hover:text-blue-600 transition-colors">{ticket.subject}</h4>
+                              <h4 className="font-black text-slate-900 dark:text-white pr-4 group-hover:text-blue-600 transition-colors">
+                                {ticket.subject}
+                              </h4>
                               <span className={cn(
                                 "shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
                                 ticket.status === 'open' ? "bg-amber-100 text-amber-600" :

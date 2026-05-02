@@ -214,10 +214,10 @@ export default function AdminClient() {
         setRealtimeStatus(status);
       });
 
-    // Fallback polling every 5 minutes just in case
+    // Fallback polling every 1 minute just in case
     const fallbackInterval = setInterval(() => {
-      fetchData();
-    }, 300000);
+      fetchData(true);
+    }, 60000);
 
     return () => {
       supabaseClient.removeChannel(globalChannel);
@@ -417,18 +417,47 @@ export default function AdminClient() {
         ? 'Tiket ini akan ditandai sebagai selesai. Pastikan semua aduan pengguna sudah tertangani.'
         : 'Tiket ini akan dibuka kembali untuk percakapan lebih lanjut.',
       type: status === 'resolved' ? 'success' : 'info',
-      onConfirm: async () => {
-        setProcessingId(id);
-        const res = await updateTicketStatus(id, status);
-        if (res.success) {
-          toast.success(`Tiket berhasil diupdate ke ${status}`);
-          fetchData();
-        } else {
-          toast.error(res.error);
+        onConfirm: async () => {
+          setProcessingId(id);
+          const res = await updateTicketStatus(id, status);
+          if (res.success) {
+            // Broadcast to User
+            // Broadcast to User (Specific Chat Channel)
+            const supabase = createClient();
+            const chatChannel = supabase.channel(`chat:${id}`);
+            chatChannel.subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                chatChannel.send({
+                  type: 'broadcast',
+                  event: 'ticket-status-updated',
+                  payload: { status }
+                });
+                setTimeout(() => supabase.removeChannel(chatChannel), 2000);
+              }
+            });
+
+            // Broadcast to User (Global Updates Channel for List Refresh)
+            if (res.userId) {
+              const userChannel = supabase.channel(`user-updates:${res.userId}`);
+              userChannel.subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                  userChannel.send({
+                    type: 'broadcast',
+                    event: 'ticket-status-updated',
+                    payload: { id, status }
+                  });
+                  setTimeout(() => supabase.removeChannel(userChannel), 2000);
+                }
+              });
+            }
+            toast.success(`Tiket berhasil diupdate ke ${status}`);
+            fetchData();
+          } else {
+            toast.error(res.error);
+          }
+          setProcessingId(null);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
-        setProcessingId(null);
-        setConfirmModal(prev => ({ ...prev, isOpen: false }));
-      }
     });
   };
 
@@ -444,13 +473,29 @@ export default function AdminClient() {
     setProcessingId(selectedTicketId);
     const res = await sendTicketMessage(selectedTicketId, replyMessage);
     if (res.success) {
-      // Broadcast to User
+      // Broadcast to User (Specific Chat Channel)
       const supabase = createClient();
       supabase.channel(`chat:${selectedTicketId}`).send({
         type: 'broadcast',
         event: 'new-chat-message',
         payload: { text: replyMessage }
       });
+
+      // Broadcast to User (Global Updates Channel for Notification Badge)
+      const currentTicket = tickets.find(t => t.id === selectedTicketId);
+      if (currentTicket) {
+        const userChannel = supabase.channel(`user-updates:${currentTicket.user_id}`);
+        userChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            userChannel.send({
+              type: 'broadcast',
+              event: 'new-chat-message',
+              payload: { text: replyMessage, ticketId: selectedTicketId }
+            });
+            setTimeout(() => supabase.removeChannel(userChannel), 2000);
+          }
+        });
+      }
 
       setReplyMessage("");
       loadMessages(selectedTicketId);
@@ -522,29 +567,41 @@ export default function AdminClient() {
       <main className="flex-1 py-12 md:py-20 px-4 sm:px-6 relative z-10">
         <div className="container mx-auto max-w-7xl">
           {/* Header */}
-          <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-12">
-            <div>
-              <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.4em] mb-3">
-                <div className="w-6 h-px bg-blue-600" />
-                Control Center v3.0
+            <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-12">
+              <div>
+                <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.4em] mb-3">
+                  <div className="w-6 h-px bg-blue-600" />
+                  Control Center v3.0
+                </div>
+                <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white font-display tracking-tight">Admin Dashboard</h1>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white font-display tracking-tight">Admin Dashboard</h1>
-            </div>
-            
-            <div className="flex items-center gap-4 w-full lg:w-auto">
-              <div className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest",
-                realtimeStatus === 'SUBSCRIBED' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                realtimeStatus === 'connecting' ? "bg-amber-50 text-amber-600 border-amber-100" :
-                "bg-red-50 text-red-600 border-red-100"
-              )}>
+              
+              <div className="flex items-center gap-4 w-full lg:w-auto">
+                <div className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest",
+                  realtimeStatus === 'SUBSCRIBED' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                  realtimeStatus === 'connecting' ? "bg-amber-50 text-amber-600 border-amber-100" :
+                  "bg-red-50 text-red-600 border-red-100"
+                )}>
                 <div className={cn(
                   "w-2 h-2 rounded-full",
                   realtimeStatus === 'SUBSCRIBED' ? "bg-emerald-500 animate-pulse" :
                   realtimeStatus === 'connecting' ? "bg-amber-500 animate-bounce" :
                   "bg-red-500"
                 )} />
-                {realtimeStatus === 'SUBSCRIBED' ? 'Live System' : 'Connecting...'}
+                {realtimeStatus === 'SUBSCRIBED' ? 'Live System' : 
+                 realtimeStatus === 'connecting' ? 'Connecting...' : 
+                 realtimeStatus === 'closed' ? 'Offline' : 'Reconnecting...'}
+                
+                {realtimeStatus !== 'SUBSCRIBED' && (
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="ml-1 p-0.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
+                    title="Muat ulang halaman untuk menyambung kembali"
+                  >
+                    <RefreshCw size={10} className={cn(realtimeStatus === 'connecting' && "animate-spin")} />
+                  </button>
+                )}
               </div>
 
               <div className="relative flex-1 lg:w-64">

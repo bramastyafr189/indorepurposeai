@@ -33,7 +33,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-40 relative z-10 overflow-hidden bg-transparent transition-colors duration-500">
+    <section id="how-it-works" className="py-20 md:py-40 relative z-10 overflow-hidden bg-transparent transition-colors duration-500">
       {/* Backdrop Blur Layer to make Antigravity particles faint */}
       <div className="absolute inset-0 backdrop-blur-[2px] pointer-events-none z-0" />
 
@@ -45,7 +45,7 @@ export function HowItWorks() {
       </div>
 
       <div className="container mx-auto px-6 relative z-10">
-        <div className="text-center mb-24">
+        <div className="text-center mb-16 md:mb-24">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -59,7 +59,7 @@ export function HowItWorks() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6 font-display tracking-tight leading-tight"
+            className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6 font-display tracking-tight leading-[1.1] md:leading-tight"
           >
             Alur <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Kerja Cerdas</span>
           </motion.h2>
@@ -69,7 +69,7 @@ export function HowItWorks() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg md:text-xl font-medium font-sans leading-relaxed"
+            className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-base md:text-xl font-medium font-sans leading-relaxed"
           >
             Lihat bagaimana teknologi kami menyulap konten Anda menjadi aset digital yang siap mendominasi pasar dalam hitungan detik.
           </motion.p>
@@ -96,7 +96,7 @@ export function HowItWorks() {
                 )} />
 
                 {/* Step Number Background */}
-                <div className="absolute -top-12 -left-4 text-8xl md:text-9xl font-black text-slate-200 dark:text-slate-800/40 select-none font-display pointer-events-none group-hover:text-blue-500/10 transition-colors duration-500">
+                <div className="absolute -top-10 md:-top-12 -left-2 md:-left-4 text-7xl md:text-9xl font-black text-slate-200 dark:text-slate-800/40 select-none font-display pointer-events-none group-hover:text-blue-500/10 transition-colors duration-500">
                   {step.stepNumber}
                 </div>
 

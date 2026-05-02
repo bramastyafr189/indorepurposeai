@@ -5,7 +5,7 @@ import { Sparkles, ArrowDown } from 'lucide-react';
 
 export function Hero() {
   return (
-    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden py-32 px-6 lg:py-48">
+    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden py-20 px-6 lg:py-48">
       {/* Animated Mesh Gradient Background - Transparent to let Antigravity show through */}
       <div className="absolute inset-0 -z-20 transition-colors duration-700" />
       
@@ -26,7 +26,7 @@ export function Hero() {
             <span className="tracking-wide">AI GENERATIVE 2026 TERBARU</span>
           </motion.div>
           
-          <h1 className="mb-6 text-[2.75rem] sm:text-6xl md:text-7xl lg:text-[6.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[0.9] md:leading-[0.85] font-display break-words max-w-full mx-auto">
+          <h1 className="mb-4 md:mb-6 text-5xl sm:text-6xl md:text-7xl lg:text-[6.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[1] md:leading-[0.85] font-display break-words max-w-full mx-auto">
             Lipat Gandakan <br />
             <motion.span 
               initial={{ opacity: 0, x: -20 }}
@@ -42,7 +42,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 1.2 }}
-            className="mx-auto mb-14 max-w-2xl text-base md:text-lg lg:text-xl text-slate-500 dark:text-slate-400 leading-relaxed font-sans px-4 md:px-0"
+            className="mx-auto mb-10 md:mb-14 max-w-2xl text-sm md:text-lg lg:text-xl text-slate-500 dark:text-slate-400 leading-relaxed font-sans px-4 md:px-0"
           >
             Platform AI all-in-one untuk <span className="text-slate-900 dark:text-slate-200 font-semibold">kreator Indonesia</span>. 
             Ubah YouTube atau artikel menjadi konten <span className="text-indigo-600 dark:text-indigo-400 font-bold">viral</span> untuk 
@@ -59,10 +59,10 @@ export function Hero() {
             transition={{ delay: 0.8 }}
             className="flex flex-col items-center gap-10"
           >
-            <div className="flex items-center gap-4 text-xs font-black text-slate-400 uppercase tracking-[0.4em]">
-              <span className="h-px w-12 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800" />
+            <div className="flex items-center gap-3 md:gap-4 text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.2em] md:tracking-[0.4em]">
+              <span className="h-px w-8 md:w-12 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800" />
               Proudly Supporting Local Creators
-              <span className="h-px w-12 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800" />
+              <span className="h-px w-8 md:w-12 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800" />
             </div>
           </motion.div>
         </motion.div>

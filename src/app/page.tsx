@@ -162,8 +162,42 @@ export default function Home() {
     setHistoryLoading(false);
   };
 
+  const cleanYouTubeUrl = (url: string) => {
+    if (!url.includes('youtube.com') && !url.includes('youtu.be')) return url;
+    
+    try {
+      const urlObj = new URL(url);
+      
+      // Handle youtu.be
+      if (url.includes('youtu.be')) {
+        return `https://youtu.be${urlObj.pathname}`;
+      }
+      
+      // Handle youtube.com/watch
+      if (urlObj.pathname === '/watch') {
+        const v = urlObj.searchParams.get('v');
+        if (v) return `https://www.youtube.com/watch?v=${v}`;
+      }
+      
+      // Handle youtube.com/shorts
+      if (urlObj.pathname.startsWith('/shorts/')) {
+        return `https://www.youtube.com${urlObj.pathname}`;
+      }
+      
+      return url;
+    } catch (e) {
+      return url;
+    }
+  };
+
   const handleProcess = async () => {
     if (!input) return;
+
+    let processedInput = input;
+    if (mode === 'url') {
+      processedInput = cleanYouTubeUrl(input.trim());
+      setInput(processedInput);
+    }
 
     // Check for Login
     if (!currentUser) {
@@ -175,7 +209,7 @@ export default function Home() {
     setError('');
     setResults(null);
 
-    const res = await processContent(input, mode, tone);
+    const res = await processContent(processedInput, mode, tone);
     
     if (res.success) {
       setResults(res.data);
@@ -363,7 +397,7 @@ export default function Home() {
         <Hero />
 
         {/* Tool Section */}
-        <section id="transform" className="py-24 px-6 relative z-10 transition-colors duration-500">
+        <section id="transform" className="py-12 md:py-24 px-6 relative z-10 transition-colors duration-500">
           <div className="container mx-auto max-w-4xl">
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
@@ -1137,10 +1171,11 @@ export default function Home() {
                               {item.results.linkedin && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900 shadow-sm"><LinkedinIcon size={12} /></div>}
                               {item.results.instagram && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900 shadow-sm"><InstagramIcon size={12} /></div>}
                               {item.results.tiktok && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900 shadow-sm"><TiktokIcon size={12} /></div>}
+                              {item.results.newsletter && <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 border-2 border-white dark:border-slate-900 shadow-sm"><MessageSquare size={12} /></div>}
+                              {item.results.threads && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900 shadow-sm"><ThreadsIcon size={12} /></div>}
+                              {item.results.highlights && <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 border-2 border-white dark:border-slate-900 shadow-sm"><Sparkles size={12} /></div>}
+                              {item.results.blog && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900 shadow-sm"><FileText size={12} /></div>}
                             </div>
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter hidden sm:block">
-                              {Object.values(item.results).filter(Boolean).length} Format
-                            </span>
                           </div>
 
                           <div className="flex items-center gap-2">

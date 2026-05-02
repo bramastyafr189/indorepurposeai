@@ -184,10 +184,10 @@ export function TransformationShowcase() {
           </div>
 
           {/* Showcase Dashboard */}
-          <div className="relative bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl rounded-[3rem] border border-white/60 dark:border-slate-800/60 shadow-2xl overflow-hidden min-h-[850px] flex flex-col">
+          <div className="relative bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl rounded-[2rem] md:rounded-[3rem] border border-white/60 dark:border-slate-800/60 shadow-2xl overflow-hidden min-h-[600px] md:min-h-[850px] flex flex-col">
             
             {/* Top Bar / Input Area */}
-            <div className="p-8 md:p-12 border-b border-white/20 dark:border-slate-800/20">
+            <div className="p-6 md:p-12 border-b border-white/20 dark:border-slate-800/20">
               <div className="flex flex-col md:flex-row gap-4 items-center">
                 <div className="relative flex-1 w-full">
                   <div className="absolute left-5 top-1/2 -translate-y-1/2 text-red-500">
@@ -235,7 +235,7 @@ export function TransformationShowcase() {
             </div>
 
             {/* Content Display Area */}
-            <div className="flex-1 p-8 md:p-12 relative flex items-center justify-center">
+            <div className="flex-1 p-4 md:p-12 relative flex items-center justify-center">
               
               <AnimatePresence mode="wait">
                 {status === 'idle' || status === 'typing' ? (

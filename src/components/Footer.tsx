@@ -59,7 +59,7 @@ export function Footer() {
               </p>
             </div>
             <a 
-              href="#transform" 
+              href="/#transform" 
               className="group px-10 py-5 bg-white text-blue-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl active:scale-95 flex items-center gap-3 shrink-0"
             >
               Mulai Sekarang <ArrowUpRight size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
@@ -128,7 +128,7 @@ export function Footer() {
               <h4 className="text-slate-900 dark:text-white font-black uppercase tracking-[0.2em] text-[10px] mb-8">Solusi Utama</h4>
               <ul className="space-y-8">
                 <li>
-                  <a href="#transform" className="group block">
+                  <a href="/#transform" className="group block">
                     <span className="text-slate-900 dark:text-white font-black text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-2">
                       AI Transformator <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" />
                     </span>
@@ -136,7 +136,7 @@ export function Footer() {
                   </a>
                 </li>
                 <li>
-                  <a href="#how-it-works" className="group block">
+                  <a href="/#how-it-works" className="group block">
                     <span className="text-slate-900 dark:text-white font-black text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Cara Kerja</span>
                     <br />
                     <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">Pelajari alur kerja cerdas AI kami yang revolusioner.</span>
@@ -149,14 +149,14 @@ export function Footer() {
               <h4 className="text-slate-900 dark:text-white font-black uppercase tracking-[0.2em] text-[10px] mb-8">Ekosistem</h4>
               <ul className="space-y-8">
                 <li>
-                  <a href="#pricing" className="group block">
+                  <a href="/#pricing" className="group block">
                     <span className="text-slate-900 dark:text-white font-black text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Paket Harga</span>
                     <br />
                     <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">Pilih paket yang sesuai dengan skala konten Anda.</span>
                   </a>
                 </li>
                 <li>
-                  <a href="#showcase" className="group block">
+                  <a href="/#showcase" className="group block">
                     <span className="text-slate-900 dark:text-white font-black text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Simulasi AI</span>
                     <br />
                     <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">Coba kehebatan AI kami secara gratis sekarang.</span>

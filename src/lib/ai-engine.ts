@@ -117,10 +117,15 @@ async function generateWithRetry(prompt: string, tone: string, userId?: string) 
         
         const rawJson = jsonContent.slice(firstBrace, lastBrace + 1);
         
-        // Try to fix some common JSON issues before parsing
-        const safeJson = rawJson
-          .replace(/\n/g, " ") 
-          .replace(/\r/g, " ");
+        // Try to fix common JSON issues only INSIDE the string values
+        const safeJson = rawJson.replace(/":\s*"([\s\S]*?)"\s*(,|\s*})/g, (match, p1, p2) => {
+          // p1 is the content of the string.
+          const cleanedContent = p1
+            .replace(/(?<!\\)"/g, "'") // Replace unescaped " with '
+            .replace(/\n/g, "\\n")    // Escape real newlines inside strings
+            .replace(/\r/g, "");
+          return `": "${cleanedContent}"${p2}`;
+        });
 
         const results = JSON.parse(safeJson);
         
@@ -132,7 +137,7 @@ async function generateWithRetry(prompt: string, tone: string, userId?: string) 
         };
       } catch (parseError) {
         console.error("[AI Engine] JSON Parse Error. Raw content:", content);
-        await logAIError(modelName, `JSON Parse Error: ${parseError instanceof Error ? parseError.message : 'Unknown'}`, prompt, userId, content);
+        // We don't log here because the outer catch will handle it
         // Show a snippet of the raw response to help debugging
         const snippet = content.length > 100 ? content.substring(0, 100) + "..." : content;
         throw new Error(`Model AI memberikan respon yang tidak bisa dibaca sebagai data: "${snippet}"`);
@@ -183,7 +188,7 @@ export const repurposeAllContent = async (content: string, tone: string = "profe
     4. TikTok Viral Script: Script lengkap dengan Hook 3 detik yang memicu rasa penasaran, Narasi VO yang cepat dan padat, serta petunjuk visual/transisi yang menarik.
     5. Newsletter: Buat email yang hangat dan personal. Berikan ringkasan materi yang memberikan nilai tambah (value) bagi pembaca, bukan sekadar rangkuman biasa.
     6. Threads: Tulis dalam gaya 'storytelling' yang sangat personal dan autentik. Mulailah dengan opini yang kuat, keresahan, atau POV (Point of View) yang unik terkait konten. Berikan pembahasan singkat yang 'ngena' dan diakhiri dengan pertanyaan terbuka yang memancing perdebatan atau diskusi panjang. JANGAN gunakan gaya bahasa yang terlalu kaku atau formal.
-    7. Video Highlights: Identifikasi segmen paling penting atau viral (3-15 segmen, sesuaikan dengan durasi dan kepadatan isi konten). Gunakan format: [MM:SS - MM:SS] | Judul Segmen | Penjelasan. BERIKAN JARAK 2 BARIS (DOUBLE NEWLINE) di antara setiap segmen agar tampilan sangat rapi dan mudah dibaca.
+    7. Video Highlights: Identifikasi dan tuliskan SEMUA segmen yang mengandung poin penting, informasi kunci, atau momen menarik dari seluruh isi konten (JANGAN membatasi jumlah segmen). Gunakan penanda waktu [MM:SS] ASLI yang ada di transkrip (WAJIB AKURAT). Gunakan format: [MM:SS - MM:SS] | Judul Segmen | Penjelasan. Berikan jarak 2 baris di antara setiap segmen agar sangat rapi.
     8. SEO Blog Post: Tulis artikel blog profesional yang mendalam (400-600 kata). Wajib gunakan struktur HTML (H1, H2, H3), berikan paragraf pembuka yang kuat, pembahasan poin demi poin, dan kesimpulan. Sertakan Meta Description dan Target Keywords.
     
     Konten: ${content}

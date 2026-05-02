@@ -107,6 +107,20 @@ export default function Home() {
     }
   }, []);
 
+  // Prevent accidental refresh/close during processing
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (loading) {
+        e.preventDefault();
+        e.returnValue = 'Proses sedang berjalan. Jika Anda keluar sekarang, hasil mungkin tidak tersimpan (Kredit tetap utuh).';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [loading]);
+
   const fetchHistory = async () => {
     setHistoryLoading(true);
     const res = await getHistory();

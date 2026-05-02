@@ -24,8 +24,18 @@ export const getYoutubeTranscript = async (url: string) => {
       throw new Error('Transkrip kosong');
     }
 
-    const fullText = transcriptItems.map(item => item.text).join(' ');
-    return fullText;
+    const formatTime = (ms: number) => {
+      const seconds = Math.floor(ms / 1000);
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `[${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}]`;
+    };
+
+    const fullTextWithTimestamps = transcriptItems
+      .map(item => `${formatTime(item.offset)} ${item.text}`)
+      .join(' ');
+      
+    return fullTextWithTimestamps;
   } catch (error) {
     console.error('Error fetching transcript:', error);
     throw new Error('Gagal mengambil transkrip video. Pastikan video memiliki subtitle/transkrip yang tersedia secara publik.');

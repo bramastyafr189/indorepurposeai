@@ -335,6 +335,7 @@ export default function AdminClient() {
       message: 'Semua riwayat kesalahan AI akan dihapus secara permanen.',
       type: 'danger',
       onConfirm: async () => {
+        setProcessingId('clear-logs');
         setClearingErrors(true);
         const res = await clearAIErrorsAdmin();
         if (res.success) {
@@ -344,6 +345,7 @@ export default function AdminClient() {
           toast.error('Gagal membersihkan log: ' + res.error);
         }
         setClearingErrors(false);
+        setProcessingId(null);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });

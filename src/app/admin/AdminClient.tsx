@@ -205,6 +205,10 @@ export default function AdminClient() {
         console.log('Broadcast New Transaction Received:', payload);
         debouncedFetchData();
       })
+      .on('broadcast', { event: 'new-ai-error' }, (payload) => {
+        console.log('Broadcast New AI Error Received:', payload);
+        debouncedFetchData();
+      })
       .subscribe((status) => {
         console.log('Admin Realtime Status:', status);
         setRealtimeStatus(status);

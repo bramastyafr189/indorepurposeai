@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/utils/supabase/admin";
+import { sendTelegramNotification } from "@/lib/notifications";
 
 // Helper function to wait
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -23,18 +24,35 @@ async function getOrderedModels() {
   return data;
 }
 
-async function logAIError(modelName: string, errorMessage: string, inputPreview: string, userId?: string, rawOutput?: string) {
+export const logAIError = async (modelName: string, errorMessage: string, inputPreview: string, userId?: string, rawOutput?: string) => {
   try {
     const supabase = createAdminClient();
     await supabase.from('ai_errors').insert([
       {
-        user_id: userId,
         model_name: modelName,
         error_message: errorMessage,
-        input_preview: inputPreview.substring(0, 500), // Limit preview size
+        input_preview: inputPreview,
+        user_id: userId,
         raw_output: rawOutput // This will be stored if the column exists
       }
     ]);
+    
+    // Broadcast to Admin Dashboard
+    await supabase.channel('admin-global-updates').send({
+      type: 'broadcast',
+      event: 'new-ai-error',
+      payload: { modelName, errorMessage }
+    });
+
+    // Send to Telegram Bot
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://indorepurposeai.com';
+    const tgMessage = `⚠️ <b>AI ERROR DETECTED</b>\n\n` +
+      `<b>Model:</b> ${modelName}\n` +
+      `<b>Error:</b> ${errorMessage}\n` +
+      `<b>User ID:</b> ${userId || 'Guest'}\n\n` +
+      `<i>Segera cek dashboard admin untuk detail output mentah.</i>`;
+
+    await sendTelegramNotification(tgMessage, undefined, `${siteUrl}/admin`, '🚀 Buka Admin');
   } catch (err) {
     console.error('[AI Engine] Failed to log error to database:', err);
   }

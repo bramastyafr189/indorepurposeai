@@ -631,7 +631,7 @@ export default function AdminClient() {
               { id: 'transaksi', label: 'Semua Transaksi', icon: HistoryIcon },
               { id: 'pengguna', label: 'Pengguna', icon: Users },
               { id: 'laporan', label: 'Log', icon: HistoryIcon },
-              { id: 'aduan', label: 'Aduan', icon: LifeBuoy },
+              { id: 'aduan', label: 'Aduan', icon: LifeBuoy, badge: stats?.pendingTickets },
               { id: 'mesin', label: 'Mesin AI', icon: Cpu },
               { id: 'ai_errors', label: 'AI Errors', icon: ShieldAlert, badge: aiErrors.length },
             ].map((tab) => (
@@ -676,7 +676,7 @@ export default function AdminClient() {
                     exit={{ opacity: 0, y: -10 }}
                     className="space-y-8"
                   >
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                       <StatsCard 
                         title="Total Pendapatan" 
                         value={`Rp ${stats?.totalRevenue?.toLocaleString('id-ID')}`} 
@@ -703,8 +703,16 @@ export default function AdminClient() {
                         value={stats?.pendingVerifications} 
                         icon={<Clock size={24} />} 
                         color="bg-slate-800"
-                        trend="Quick action required"
+                        trend="Penyelesaian Cepat"
                         isActive={stats?.pendingVerifications > 0}
+                      />
+                      <StatsCard 
+                        title="Aduan Aktif" 
+                        value={stats?.pendingTickets} 
+                        icon={<LifeBuoy size={24} />} 
+                        color="bg-red-500"
+                        trend="Respon Dibutuhkan"
+                        isActive={stats?.pendingTickets > 0}
                       />
                     </div>
 

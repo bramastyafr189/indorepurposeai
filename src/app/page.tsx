@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw, Search } from 'lucide-react';
+import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw, Search, ArrowLeft } from 'lucide-react';
 import { processContent, getHistory, deleteHistory, createTicket, getTickets, getTicketMessages, sendTicketMessage } from './actions';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -808,9 +808,10 @@ export default function Home() {
                       <div className="flex items-center justify-between mb-6">
                         <button 
                           onClick={() => setSelectedTicketId(null)}
-                          className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest hover:translate-x-[-4px] transition-transform"
+                          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-500/50 group transition-all"
                         >
-                          <Trash2 size={14} className="rotate-45" /> Kembali ke Riwayat
+                          <ArrowLeft size={14} className="text-slate-400 group-hover:text-blue-600 group-hover:-translate-x-1 transition-all" />
+                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors">Kembali ke Riwayat</span>
                         </button>
                         <button 
                           onClick={() => loadTicketMessages(selectedTicketId!)}
@@ -889,7 +890,7 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
                       {tickets.length === 0 ? (
                         <div className="text-center py-12">
                           <MessageCircle size={48} className="mx-auto text-slate-200 mb-4" />

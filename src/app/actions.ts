@@ -590,13 +590,20 @@ export async function getAdminStats() {
       .neq('plan_name', 'Free')
       .gt('plan_expires_at', now);
 
+    // 5. Get pending tickets
+    const { count: pendingTickets } = await adminSupabase
+      .from('tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open');
+
     return {
       success: true,
       data: {
         totalUsers: userCount || 0,
         totalRevenue,
         pendingVerifications: pendingCount || 0,
-        activeSubscriptions: activeSubs || 0
+        activeSubscriptions: activeSubs || 0,
+        pendingTickets: pendingTickets || 0
       }
     };
   } catch (error: any) {

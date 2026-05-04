@@ -688,12 +688,18 @@ export default function ProfilePage() {
               <div ref={printRef} className="p-6 sm:p-12 space-y-6 sm:space-y-8">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl rotate-3">
-                    <Sparkles size={32} />
+                  <div className="rounded-2xl bg-blue-600 p-4 shadow-2xl shadow-blue-500/20 rotate-3">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-white" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="8" y="8" width="12" height="12" rx="3" stroke="currentColor" strokeWidth="2" strokeOpacity="0.4" />
+                      <rect x="4" y="4" width="12" height="12" rx="3" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="2" />
+                      <path d="M9 8.5L13 10L9 11.5V8.5Z" fill="currentColor" />
+                    </svg>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase leading-none">IndoRepurpose AI</h2>
-                    <p className="text-[10px] font-black tracking-[0.3em] text-blue-600 uppercase mt-2">Struk Pembayaran Digital</p>
+                    <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                      IndoRepurpose<span className="text-blue-600">AI</span>
+                    </h2>
+                    <p className="text-[10px] font-black tracking-[0.3em] text-blue-600 uppercase mt-3">Struk Pembayaran Digital</p>
                   </div>
                 </div>
 

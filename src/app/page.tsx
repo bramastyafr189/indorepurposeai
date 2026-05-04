@@ -1130,7 +1130,7 @@ export default function Home() {
                         onClick={() => loadFromHistory(item)}
                         className="group relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 p-5 md:p-7 rounded-[2.5rem] hover:border-blue-500/50 transition-all duration-500 cursor-pointer hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col md:flex-row md:items-center justify-between gap-6"
                       >
-                        <div className="flex items-center gap-5 flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-5 flex-1 min-w-0">
                           <div className={cn(
                             "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-3",
                             item.mode === 'url' 
@@ -1270,7 +1270,7 @@ function ResultCard({ title, icon, content, onCopy, onPreview, index, color }: a
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 overflow-hidden group"
+      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 group"
     >
       <div className="p-6 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
         <div className="flex items-center gap-4 font-black text-slate-900 dark:text-white">

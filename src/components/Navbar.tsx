@@ -235,7 +235,7 @@ export function Navbar() {
                       >
                         <Link 
                           href="/profile"
-                          className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-500/20 border-2 border-white dark:border-slate-800 hover:scale-110 transition-transform cursor-pointer relative z-20"
+                          className="hidden md:flex w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-500/20 border-2 border-white dark:border-slate-800 hover:scale-110 transition-transform cursor-pointer relative z-20"
                         >
                           {user.email?.[0].toUpperCase()}
                         </Link>
@@ -364,7 +364,11 @@ export function Navbar() {
             >
             <div className="container mx-auto py-6 px-6 flex flex-col gap-6">
               {user && (
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-900">
+                <Link 
+                  href="/profile" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-900 active:opacity-70 transition-opacity"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black">
                       {user.email?.[0].toUpperCase()}
@@ -394,7 +398,7 @@ export function Navbar() {
                       <span>Kredit</span>
                     </span>
                   </div>
-                </div>
+                </Link>
               )}
 
               <div className="flex flex-col gap-4">

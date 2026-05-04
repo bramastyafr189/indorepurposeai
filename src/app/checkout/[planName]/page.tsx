@@ -257,20 +257,20 @@ export default function CheckoutPage() {
       <main className="flex-1 py-12 md:py-24 px-6 relative z-10">
         <div className="container mx-auto max-w-4xl">
           {/* Header Step Indicator */}
-          <div className="flex items-center justify-center gap-4 mb-16 max-w-xl mx-auto">
-            <div className={cn("flex flex-col items-center gap-2 transition-all", step === 'method' ? "opacity-100 scale-110" : "opacity-40")}>
-              <div className="w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xs">1</div>
-              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Metode</span>
+          <div className="flex items-center justify-center gap-1 sm:gap-4 mb-16 sm:mb-20 max-w-xl mx-auto">
+            <div className="flex flex-col items-center relative">
+              <div className={cn("w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xs shadow-lg relative z-10 transition-all shrink-0", step === 'method' ? "scale-110" : "opacity-40")}>1</div>
+              <span className="absolute top-full mt-2 text-[10px] font-black uppercase tracking-widest hidden sm:block whitespace-nowrap opacity-40">Metode</span>
             </div>
-            <div className="h-px bg-slate-300 dark:bg-slate-800 flex-1 mb-6" />
-            <div className={cn("flex flex-col items-center gap-2 transition-all", step === 'confirm' ? "opacity-100 scale-110" : "opacity-40")}>
-              <div className="w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xs">2</div>
-              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Konfirmasi</span>
+            <div className="h-px bg-slate-300 dark:bg-slate-800 flex-1 min-w-[20px]" />
+            <div className="flex flex-col items-center relative">
+              <div className={cn("w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xs shadow-lg relative z-10 transition-all shrink-0", step === 'confirm' ? "scale-110" : "opacity-40")}>2</div>
+              <span className="absolute top-full mt-2 text-[10px] font-black uppercase tracking-widest hidden sm:block whitespace-nowrap opacity-40">Konfirmasi</span>
             </div>
-            <div className="h-px bg-slate-300 dark:bg-slate-800 flex-1 mb-6" />
-            <div className={cn("flex flex-col items-center gap-2 transition-all", step === 'instructions' ? "opacity-100 scale-110" : "opacity-40")}>
-              <div className="w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xs">3</div>
-              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Transfer</span>
+            <div className="h-px bg-slate-300 dark:bg-slate-800 flex-1 min-w-[20px]" />
+            <div className="flex flex-col items-center relative">
+              <div className={cn("w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xs shadow-lg relative z-10 transition-all shrink-0", step === 'instructions' ? "scale-110" : "opacity-40")}>3</div>
+              <span className="absolute top-full mt-2 text-[10px] font-black uppercase tracking-widest hidden sm:block whitespace-nowrap opacity-40">Transfer</span>
             </div>
           </div>
 
@@ -284,9 +284,9 @@ export default function CheckoutPage() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-8"
               >
-                <div className="text-center max-w-2xl mx-auto mb-12">
-                  <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Pilih Metode Pembayaran</h1>
-                  <p className="text-slate-500 font-medium tracking-tight">Pilih cara ternyaman Anda untuk mengaktifkan paket {planName}.</p>
+                <div className="text-center max-w-2xl mx-auto mb-8 md:mb-12 px-2">
+                  <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-3 md:mb-4">Pilih Metode Pembayaran</h1>
+                  <p className="text-slate-500 text-sm font-medium tracking-tight">Pilih cara ternyaman Anda untuk mengaktifkan paket {planName}.</p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -295,7 +295,7 @@ export default function CheckoutPage() {
                       key={m.id}
                       onClick={() => setSelectedMethodId(m.id)}
                       className={cn(
-                        "p-8 rounded-[2.5rem] border-2 text-left transition-all relative overflow-hidden group",
+                        "p-6 sm:p-8 rounded-[2.5rem] border-2 text-left transition-all relative overflow-hidden group",
                         selectedMethodId === m.id 
                           ? "bg-white dark:bg-slate-900 border-blue-600 shadow-2xl shadow-blue-500/10" 
                           : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300"
@@ -351,7 +351,7 @@ export default function CheckoutPage() {
                   <p className="text-slate-500 font-medium tracking-tight">Mohon periksa kembali detail pesanan Anda sebelum lanjut.</p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
                   <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                     <span className="text-slate-500 font-bold text-sm uppercase tracking-widest">Paket</span>
                     <span className="text-slate-900 dark:text-white font-black">IndoRepurpose {planName}</span>
@@ -421,23 +421,23 @@ export default function CheckoutPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
                 <div className="lg:col-span-3 space-y-8">
                   <header>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase tracking-widest mb-4">
-                      <CheckCircle2 size={14} />
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-4">
+                      <CheckCircle2 size={12} />
                       Pesanan Berhasil Dibuat
                     </div>
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-4 font-display">Selesaikan Pembayaran</h1>
-                    <p className="text-slate-500 font-medium">Silakan transfer nominal tepat di bawah ini ke {activeMethod?.name}.</p>
+                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-3 md:mb-4 font-display">Selesaikan Pembayaran</h1>
+                    <p className="text-slate-500 text-sm font-medium">Silakan transfer nominal tepat di bawah ini ke {activeMethod?.name}.</p>
                   </header>
 
                   {/* Final Amount Card */}
-                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 border-2 border-emerald-500/20 shadow-2xl relative overflow-hidden group">
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 md:p-10 border-2 border-emerald-500/20 shadow-2xl relative overflow-hidden group">
                     <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-center underline decoration-emerald-500 decoration-2 underline-offset-4">
                       Total Nominal (Wajib Persis)
                     </p>
                     <div className="flex flex-col items-center gap-4">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-black text-slate-400">Rp</span>
-                        <span className="text-6xl md:text-7xl font-black text-emerald-600 tracking-tighter">
+                      <div className="flex items-baseline gap-2 max-w-full overflow-hidden">
+                        <span className="text-xl md:text-2xl font-black text-slate-400">Rp</span>
+                        <span className="text-4xl sm:text-5xl md:text-7xl font-black text-emerald-600 tracking-tighter truncate">
                           {(transaction.amount + (transaction.unique_code || 0)).toLocaleString('id-ID')}
                         </span>
                       </div>
@@ -458,9 +458,9 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Target Account Card */}
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-6">
-                      <div className="w-24 h-14 flex items-center justify-center shrink-0">
+                  <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 sm:gap-6">
+                    <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+                      <div className="w-12 h-8 sm:w-24 sm:h-14 flex items-center justify-center shrink-0 bg-slate-50 dark:bg-slate-800/50 rounded-lg sm:rounded-2xl p-1">
                         <img 
                           src={activeMethod?.logo} 
                           alt={activeMethod?.name} 
@@ -468,41 +468,27 @@ export default function CheckoutPage() {
                           referrerPolicy="no-referrer"
                         />
                       </div>
-                      <div>
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{activeMethod?.name}</p>
-                        <p className="text-2xl font-black text-slate-900 dark:text-white">{activeMethod?.account}</p>
-                        <p className="text-xs text-slate-500 font-bold uppercase">{activeMethod?.holder}</p>
+                      <div className="min-w-0">
+                        <p className="text-[9px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">{activeMethod?.name}</p>
+                        <p className="text-sm sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">{activeMethod?.account}</p>
+                        <p className="text-[9px] sm:text-xs text-slate-500 font-bold uppercase truncate">{activeMethod?.holder}</p>
                       </div>
                     </div>
                     <button 
                       onClick={() => activeMethod && copyToClipboard(activeMethod.account.replace(/\s/g, ''), 'No Rekening')}
-                      className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                      className="p-3 sm:p-4 bg-slate-100 dark:bg-slate-800 rounded-xl sm:rounded-2xl hover:bg-emerald-600 hover:text-white text-slate-500 transition-all shadow-sm shrink-0 active:scale-95"
                     >
-                      <Copy size={24} />
+                      <Copy size={18} className="sm:hidden" />
+                      <Copy size={24} className="hidden sm:block" />
                     </button>
                   </div>
                 </div>
 
-                <div className="lg:col-span-2 space-y-6 sticky top-28 self-start">
-                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-xl">
+                <div className="lg:col-span-2 space-y-6 lg:sticky lg:top-28 self-start">
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-xl">
                     <div className="space-y-6 mb-8 text-center sm:text-left">
-                      <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Konfirmasi</h3>
-                      <p className="text-sm text-slate-500 font-medium">Jika Anda sudah melakukan transfer, silakan klik tombol di bawah untuk konfirmasi ke Admin.</p>
-                      
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl space-y-2">
-                        <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase flex items-center gap-2">
-                           ID Transaksi
-                        </span>
-                        <div className="flex items-center justify-between gap-2 overflow-hidden bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl">
-                          <code className="text-[10px] font-bold text-blue-600 break-all">{transaction.order_id}</code>
-                          <button 
-                            onClick={() => copyToClipboard(transaction.order_id, 'ID Transaksi')}
-                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition-colors shrink-0"
-                          >
-                            <Copy size={12} />
-                          </button>
-                        </div>
-                      </div>
+                      <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Konfirmasi</h3>
+                      <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">Jika Anda sudah melakukan transfer, silakan klik tombol di bawah untuk konfirmasi ke Admin agar verifikasi bisa dilakukan lebih cepat.</p>
                     </div>
 
                     {transaction.status === 'pending' ? (
@@ -587,20 +573,17 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
-                  <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-800 shadow-lg flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600">
-                      <Clock size={18} />
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200 dark:border-slate-800 shadow-xl flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 shrink-0">
+                      <Clock size={24} />
                     </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bayar Dalam</p>
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Batas Waktu Bayar</p>
+                      <p className="text-base font-black text-emerald-600 dark:text-emerald-400 animate-pulse truncate">
                         {timeLeft !== null ? formatTimeLeft(timeLeft) : 'Menghitung...'}
                       </p>
-                      <p className="text-[8px] text-slate-500 font-bold uppercase mt-1">
-                        Batas: {new Date(new Date(transaction.created_at).getTime() + 2 * 60 * 60 * 1000).toLocaleString('id-ID', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
+                      <p className="text-[9px] text-slate-500 font-bold uppercase mt-1 truncate">
+                        Hingga: {new Date(new Date(transaction.created_at).getTime() + 2 * 60 * 60 * 1000).toLocaleString('id-ID', {
                           hour: '2-digit',
                           minute: '2-digit'
                         })} WIB

@@ -303,18 +303,42 @@ export function Navbar() {
               
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="hidden md:flex ml-4 h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all hover:scale-105 active:scale-95"
+                className="hidden md:flex ml-4 h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all hover:scale-105 active:scale-95 overflow-hidden"
               >
-                {mounted && (theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />)}
+                <AnimatePresence mode="wait">
+                  {mounted && (
+                    <motion.div
+                      key={theme}
+                      initial={{ y: -20, opacity: 0, rotate: -90 }}
+                      animate={{ y: 0, opacity: 1, rotate: 0 }}
+                      exit={{ y: 20, opacity: 0, rotate: 90 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                    >
+                      {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </button>
             </div>
 
             <div className="md:hidden flex items-center gap-3">
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 shadow-sm active:scale-95 transition-all"
+                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 shadow-sm active:scale-95 transition-all overflow-hidden"
               >
-                {mounted && (theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />)}
+                <AnimatePresence mode="wait">
+                  {mounted && (
+                    <motion.div
+                      key={theme}
+                      initial={{ y: -20, opacity: 0, rotate: -90 }}
+                      animate={{ y: 0, opacity: 1, rotate: 0 }}
+                      exit={{ y: 20, opacity: 0, rotate: 90 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                    >
+                      {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </button>
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

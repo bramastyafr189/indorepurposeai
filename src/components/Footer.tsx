@@ -129,8 +129,8 @@ export function Footer() {
               <ul className="space-y-8">
                 <li>
                   <a href="/#transform" className="group block">
-                    <span className="text-slate-900 dark:text-white font-black text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-2">
-                      AI Transformator <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" />
+                    <span className="text-slate-900 dark:text-white font-black text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center flex-wrap gap-2">
+                      AI Transformator <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-all shrink-0" />
                     </span>
                     <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">Ubah video YouTube menjadi puluhan konten teks.</span>
                   </a>

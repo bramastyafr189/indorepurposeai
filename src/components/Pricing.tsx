@@ -151,7 +151,7 @@ export function Pricing() {
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-4xl md:text-6xl font-black mb-4 tracking-tight text-slate-900 dark:text-white leading-[1.1]"
+            className="text-3xl md:text-6xl font-black mb-4 tracking-tight text-slate-900 dark:text-white leading-[1.1] px-4"
           >
             Investasi Untuk <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Produktivitas Anda</span>
@@ -161,13 +161,13 @@ export function Pricing() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-medium font-sans leading-relaxed"
+            className="text-slate-500 dark:text-slate-400 text-base md:text-xl max-w-2xl mx-auto font-medium font-sans leading-relaxed px-6"
           >
             Pilih paket yang sesuai dengan volume konten Anda dan mulai dominasi media sosial sekarang.
           </motion.p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-3 xl:gap-6 max-w-7xl mx-auto items-stretch">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-3 xl:gap-6 max-w-7xl mx-auto items-stretch px-6 md:px-4">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.name}

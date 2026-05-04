@@ -148,7 +148,7 @@ export default function ProfilePage() {
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((ms % (1000 * 60)) / 1000);
-    return `${hours}:${minutes}:${seconds}`;
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const handleCancelTx = async (id: string) => {
@@ -255,9 +255,9 @@ export default function ProfilePage() {
             Kembali ke Beranda
           </Link>
 
-          <header className="mb-12 print:hidden">
-            <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2 font-display">Akun Saya</h1>
-            <p className="text-slate-500 font-medium">Kelola langganan dan pantau riwayat pembayaran Anda.</p>
+          <header className="mb-8 md:mb-12 print:hidden px-2">
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-2 font-display">Akun Saya</h1>
+            <p className="text-slate-500 text-sm font-medium">Kelola langganan dan pantau riwayat pembayaran Anda.</p>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -265,9 +265,9 @@ export default function ProfilePage() {
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="lg:col-span-4 space-y-6 sticky top-28 self-start print:hidden"
+              className="lg:col-span-4 space-y-6 lg:sticky lg:top-28 self-start print:hidden"
             >
-              <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none text-center">
+              <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none text-center">
                 <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 mx-auto flex items-center justify-center text-white text-3xl font-black mb-6 border-4 border-slate-50 dark:border-slate-800 shadow-xl shadow-blue-500/20 rotate-3">
                   {profile?.email?.[0].toUpperCase()}
                 </div>
@@ -312,11 +312,11 @@ export default function ProfilePage() {
               className="lg:col-span-8 space-y-8"
             >
               {/* Tabs */}
-              <div className="flex gap-4 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl w-fit font-black text-xs uppercase tracking-widest print:hidden">
+              <div className="flex gap-2 sm:gap-4 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl w-full sm:w-fit font-black text-[10px] sm:text-xs uppercase tracking-widest print:hidden">
                 <button 
                   onClick={() => setActiveTab('overview')}
                   className={cn(
-                    "px-6 py-3 rounded-xl transition-all",
+                    "flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl transition-all",
                     activeTab === 'overview' ? "bg-white dark:bg-slate-800 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                   )}
                 >
@@ -325,7 +325,7 @@ export default function ProfilePage() {
                 <button 
                   onClick={() => setActiveTab('transactions')}
                   className={cn(
-                    "px-6 py-3 rounded-xl transition-all",
+                    "flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl transition-all",
                     activeTab === 'transactions' ? "bg-white dark:bg-slate-800 text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                   )}
                 >
@@ -347,70 +347,85 @@ export default function ProfilePage() {
                       <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="bg-amber-50 dark:bg-transparent backdrop-blur-xl border-2 border-amber-200 dark:border-amber-900/30 rounded-[2.5rem] p-8 relative overflow-hidden group shadow-xl shadow-amber-500/5"
+                        className="bg-amber-50 dark:bg-transparent backdrop-blur-xl border-2 border-amber-200 dark:border-amber-900/30 rounded-[2.5rem] p-6 md:p-8 relative overflow-hidden group shadow-xl shadow-amber-500/5"
                       >
                          <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-700">
                           <AlertCircle size={150} className="text-amber-500" />
                         </div>
                         
                         <div className="relative z-10">
-                          <div className="flex items-start justify-between gap-4 mb-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center">
-                                <Clock size={20} className="animate-pulse" />
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
+                            <div className="flex items-center gap-4">
+                              <div className={cn(
+                                "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shrink-0 transition-colors duration-500",
+                                profile.pendingTransaction.status === 'expired' ? "bg-red-500 shadow-red-500/20" : 
+                                profile.pendingTransaction.status === 'verifying' ? "bg-emerald-500 shadow-emerald-500/20" :
+                                "bg-amber-500 shadow-amber-500/20"
+                              )}>
+                                {profile.pendingTransaction.status === 'verifying' ? (
+                                  <Loader2 size={24} className="animate-spin text-white" />
+                                ) : (
+                                  <Clock size={24} className={cn(profile.pendingTransaction.status === 'pending' && "animate-pulse", "text-white")} />
+                                )}
                               </div>
                               <div>
                                 <h3 className={cn(
-                                  "text-lg font-black uppercase tracking-tight leading-none",
-                                  profile.pendingTransaction.status === 'expired' ? "text-red-900 dark:text-red-400" : "text-amber-900 dark:text-amber-400"
+                                  "text-xl font-black uppercase tracking-tight leading-none mb-1.5",
+                                  profile.pendingTransaction.status === 'expired' ? "text-red-900 dark:text-red-400" : 
+                                  profile.pendingTransaction.status === 'verifying' ? "text-emerald-900 dark:text-emerald-400" :
+                                  "text-amber-900 dark:text-amber-400"
                                 )}>
-                                  {profile.pendingTransaction.status === 'expired' ? 'Pesanan Kedaluwarsa' : 'Menunggu Pembayaran'}
+                                  {profile.pendingTransaction.status === 'expired' ? 'Pesanan Kedaluwarsa' : 
+                                   profile.pendingTransaction.status === 'verifying' ? 'Sedang Diverifikasi' :
+                                   'Menunggu Pembayaran'}
                                 </h3>
                                 <p className={cn(
-                                  "text-xs font-bold mt-1 uppercase tracking-widest",
-                                  profile.pendingTransaction.status === 'expired' ? "text-red-600 dark:text-red-500" : "text-amber-600 dark:text-amber-500"
+                                  "text-[10px] font-black uppercase tracking-widest opacity-60",
+                                  profile.pendingTransaction.status === 'expired' ? "text-red-600 dark:text-red-500" : 
+                                  profile.pendingTransaction.status === 'verifying' ? "text-emerald-600 dark:text-emerald-500" :
+                                  "text-amber-600 dark:text-amber-500"
                                 )}>
-                                  ID: {profile.pendingTransaction.order_id.slice(-8)}
+                                  {profile.pendingTransaction.status === 'verifying' ? 'Mohon tunggu sebentar, Admin sedang mengecek' : 'Segera selesaikan sebelum batas waktu'}
                                 </p>
                               </div>
                             </div>
                             
                             {profile.pendingTransaction.status === 'pending' && timeLeft !== null && (
                               <div className="text-right">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Berakhir Dalam</p>
-                                <p className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1 opacity-60">Berakhir Dalam</p>
+                                <p className="text-2xl font-black text-amber-700 dark:text-amber-300 font-mono tracking-tighter">
                                   {formatTimeLeft(timeLeft)}
                                 </p>
                               </div>
                             )}
                           </div>
 
-                          <div className="bg-white/50 dark:bg-black/20 rounded-2xl p-6 mb-8 border border-amber-200/50 dark:border-amber-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div>
-                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Paket Pilihan</p>
-                              <p className="text-xl font-black text-slate-900 dark:text-white uppercase leading-none mt-1">
+                          <div className="bg-white/50 dark:bg-black/20 rounded-3xl p-6 sm:p-8 mb-8 border border-amber-200/50 dark:border-amber-800/50 flex flex-col sm:flex-row justify-between items-center gap-6 text-center sm:text-left">
+                            <div className="w-full sm:w-auto">
+                              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Paket Pilihan</p>
+                              <p className="text-2xl font-black text-slate-900 dark:text-white uppercase leading-none tracking-tight">
                                 {profile.pendingTransaction.plan_name}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest leading-none">Total Tagihan</p>
-                              <p className="text-2xl font-black text-amber-600 mt-1">
+                            <div className="w-full sm:w-auto sm:text-right border-t sm:border-t-0 sm:border-l border-amber-200/30 dark:border-amber-800/30 pt-6 sm:pt-0 sm:pl-8">
+                              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Total Tagihan</p>
+                              <p className="text-3xl font-black text-amber-600 tracking-tighter">
                                 Rp {(profile.pendingTransaction.amount + (profile.pendingTransaction.unique_code || 0)).toLocaleString('id-ID')}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-4">
+                          <div className="flex flex-col sm:flex-row gap-4">
                             {profile.pendingTransaction.status === 'expired' ? (
                               <div className="w-full space-y-4">
-                                <div className="p-6 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 rounded-3xl">
-                                  <p className="text-xs text-red-600 dark:text-red-400 font-medium leading-relaxed">
+                                <div className="p-6 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 rounded-3xl text-center sm:text-left">
+                                  <p className="text-xs text-red-600 dark:text-red-400 font-bold leading-relaxed">
                                     Batas waktu pembayaran 2 jam telah habis. Silakan buat pesanan baru jika Anda ingin melanjutkan.
                                   </p>
                                 </div>
                                 <Link 
                                   href="/#pricing"
-                                  className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-sm uppercase tracking-widest transition-all"
+                                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-10 py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl active:scale-95"
                                 >
                                   Buat Pesanan Baru <ChevronRight size={18} />
                                 </Link>
@@ -419,16 +434,16 @@ export default function ProfilePage() {
                               <>
                                 <Link 
                                   href={`/checkout/${profile.pendingTransaction.plan_name}`}
-                                  className="px-8 py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-amber-500/25 flex items-center gap-2"
+                                  className="w-full sm:w-auto px-10 py-5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2 active:scale-95"
                                 >
                                   Selesaikan Pembayaran <ChevronRight size={18} />
                                 </Link>
                                 <button 
                                   onClick={() => setConfirmModal({ isOpen: true, txId: profile.pendingTransaction.id })}
                                   disabled={cancelling}
-                                  className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-500 hover:text-red-500 rounded-2xl font-black text-sm uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700"
+                                  className="w-full sm:w-auto px-10 py-5 bg-white dark:bg-slate-800 text-slate-500 hover:text-red-500 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
                                 >
-                                  {cancelling ? <Loader2 size={18} className="animate-spin" /> : 'Batalkan'}
+                                  {cancelling ? <Loader2 size={18} className="animate-spin" /> : 'Batalkan Pesanan'}
                                 </button>
                               </>
                             ) : (
@@ -496,7 +511,7 @@ export default function ProfilePage() {
                     )}
 
                     {/* Credit Card */}
-                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden group print:hidden">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 md:p-10 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden group print:hidden">
                       <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-700">
                         <Zap size={150} className="text-blue-600" />
                       </div>
@@ -544,7 +559,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Active Plan Perks */}
-                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden print:hidden">
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-6 md:p-10 text-white shadow-2xl relative overflow-hidden print:hidden">
                       <div className="absolute top-0 right-0 p-8 opacity-10">
                         <PlanIcon size={120} />
                       </div>
@@ -587,23 +602,23 @@ export default function ProfilePage() {
                         <button 
                           key={tx.id}
                           onClick={() => setSelectedTx(tx)}
-                          className="w-full text-left bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex items-center justify-between group hover:border-blue-500 transition-all hover:translate-x-1"
+                          className="w-full text-left bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:border-blue-500 transition-all hover:translate-x-1"
                         >
-                          <div className="flex items-center gap-5">
+                          <div className="flex items-center gap-3 sm:gap-5">
                             <div className={cn(
-                              "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                              "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-colors shrink-0",
                               tx.status === 'success' ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500" :
                               (tx.status === 'cancelled' || tx.status === 'rejected') ? "bg-red-50 dark:bg-red-500/10 text-red-500" :
                               tx.status === 'expired' ? "bg-slate-100 dark:bg-slate-500/10 text-slate-500" :
                               "bg-amber-50 dark:bg-amber-500/10 text-amber-500"
                             )}>
-                              {tx.status === 'success' ? <Check size={24} /> : 
-                               (tx.status === 'cancelled' || tx.status === 'rejected' || tx.status === 'expired') ? <X size={24} /> : 
-                               <Clock size={24} />}
+                              {tx.status === 'success' ? <Check size={20} /> : 
+                               (tx.status === 'cancelled' || tx.status === 'rejected' || tx.status === 'expired') ? <X size={20} /> : 
+                               <Clock size={20} />}
                             </div>
-                            <div>
-                              <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Paket {tx.plan_name}</p>
-                              <p className="text-xs text-slate-500 font-medium lowercase">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">Paket {tx.plan_name}</p>
+                              <p className="text-[10px] sm:text-xs text-slate-500 font-medium lowercase truncate">
                                 {tx.order_id.slice(-8)} • {new Date(tx.created_at).toLocaleDateString('id-ID', { 
                                   day: 'numeric', 
                                   month: 'short',
@@ -613,13 +628,13 @@ export default function ProfilePage() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <p className="text-sm font-black text-slate-900 dark:text-white">
+                          <div className="flex items-center justify-between w-full sm:w-auto gap-4 sm:border-l sm:pl-4 border-slate-100 dark:border-slate-800">
+                            <div className="text-left sm:text-right">
+                              <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                                 Rp {(tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID')}
                               </p>
                               <p className={cn(
-                                "text-[10px] font-black uppercase tracking-widest",
+                                "text-[9px] sm:text-[10px] font-black uppercase tracking-widest",
                                 tx.status === 'success' ? "text-emerald-500" :
                                 tx.status === 'cancelled' ? "text-slate-400" :
                                 tx.status === 'rejected' ? "text-red-500" :
@@ -632,7 +647,7 @@ export default function ProfilePage() {
                                  tx.status === 'expired' ? 'Kedaluwarsa' : 'Proses'}
                               </p>
                             </div>
-                            <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                            <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-500 transition-colors hidden sm:block" />
                           </div>
                         </button>
                       ))
@@ -670,7 +685,7 @@ export default function ProfilePage() {
               className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl overflow-hidden print:shadow-none print:bg-white print:text-black print:rounded-none"
             >
               {/* Modal Content */}
-              <div ref={printRef} className="p-8 sm:p-12 space-y-8">
+              <div ref={printRef} className="p-6 sm:p-12 space-y-6 sm:space-y-8">
                 {/* Brand Header */}
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl rotate-3">

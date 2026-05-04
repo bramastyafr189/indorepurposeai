@@ -26,7 +26,7 @@ export function Hero() {
             <span className="tracking-wide">AI GENERATIVE 2026 TERBARU</span>
           </motion.div>
           
-          <h1 className="mb-4 md:mb-6 text-5xl sm:text-6xl md:text-7xl lg:text-[6.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[1] md:leading-[0.85] font-display break-words max-w-full mx-auto">
+          <h1 className="mb-4 md:mb-6 text-4xl sm:text-6xl md:text-7xl lg:text-[6.5rem] font-extrabold tracking-tighter text-slate-900 dark:text-white leading-[1.1] md:leading-[0.85] font-display break-words max-w-full mx-auto px-2">
             Lipat Gandakan <br />
             <motion.span 
               initial={{ opacity: 0, x: -20 }}

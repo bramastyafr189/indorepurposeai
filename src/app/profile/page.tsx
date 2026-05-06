@@ -8,7 +8,7 @@ import {
   Clock, ChevronRight, Check, X, Download, Copy,
   Wallet, Smartphone, Banknote, AlertCircle, ExternalLink,
   Upload, MessageSquare, Loader2 as LoaderIcon,
-  LifeBuoy
+  LifeBuoy, ShieldQuestion, Image as ImageIcon
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -42,6 +42,9 @@ export default function ProfilePage() {
     isOpen: false,
     txId: null
   });
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
   const printRef = useRef<HTMLDivElement>(null);
@@ -109,12 +112,24 @@ export default function ProfilePage() {
     if (profile?.id) {
       const channel = supabase
         .channel(`user-updates:${profile.id}`)
-        .on('broadcast', { event: 'profile-updated' }, () => {
-          console.log('Profile updated by Admin, reloading...');
+        .on('broadcast', { event: 'profile-updated' }, (payload) => {
+          console.log('Profile updated by Admin:', payload);
           loadData();
-          toast.success('Status akun Anda telah diperbarui!', {
-            description: 'Perubahan paket atau kredit telah diterapkan.'
-          });
+          
+          const status = payload.payload?.status;
+          if (status === 'success') {
+            toast.success('Pembayaran Berhasil Diverifikasi!', {
+              description: 'Selamat! Paket Anda telah aktif dan kredit telah ditambahkan.'
+            });
+          } else if (status === 'rejected') {
+            toast.error('Pembayaran Gagal Diverifikasi', {
+              description: 'Mohon cek kembali bukti transfer Anda atau hubungi admin via tiket bantuan.'
+            });
+          } else {
+            toast.success('Status akun Anda telah diperbarui!', {
+              description: 'Perubahan paket atau kredit telah diterapkan.'
+            });
+          }
         })
         .subscribe();
 
@@ -164,7 +179,7 @@ export default function ProfilePage() {
     setCancelling(false);
   };
 
-  const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile?.pendingTransaction) return;
 
@@ -173,15 +188,32 @@ export default function ProfilePage() {
       return;
     }
 
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result as string);
+      setPreviewFile(file);
+      setShowPreviewModal(true);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input value
+    e.target.value = '';
+  };
+
+  const executeUpload = async () => {
+    if (!previewFile || !profile?.pendingTransaction) return;
+
     setUploadingProof(true);
+    setShowPreviewModal(false);
+    
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = previewFile.name.split('.').pop();
       const fileName = `${profile.pendingTransaction.order_id}-${Math.random()}.${fileExt}`;
       const filePath = `proofs/${fileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from('payment-proofs')
-        .upload(filePath, file);
+        .upload(filePath, previewFile);
 
       if (uploadError) throw uploadError;
 
@@ -189,7 +221,7 @@ export default function ProfilePage() {
         .from('payment-proofs')
         .getPublicUrl(filePath);
 
-      const res = await updateTransactionProof(profile.pendingTransaction.id, publicUrl);
+      const res = await updateTransactionProof(profile.pendingTransaction.id, publicUrl, true);
       if (res.success) {
         // Broadcast to Admin
         supabase.channel('admin-global-updates').send({
@@ -208,6 +240,8 @@ export default function ProfilePage() {
       toast.error('Gagal mengunggah bukti: ' + error.message);
     } finally {
       setUploadingProof(false);
+      setPreviewFile(null);
+      setPreviewUrl(null);
     }
   };
 
@@ -477,7 +511,7 @@ export default function ProfilePage() {
                                       <input 
                                         type="file" 
                                         accept="image/*" 
-                                        onChange={handleUploadProof}
+                                        onChange={handleFileSelect}
                                         disabled={uploadingProof}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                                       />
@@ -822,6 +856,94 @@ export default function ProfilePage() {
 
       <div className="print:hidden">
         <Footer />
+
+      <AnimatePresence>
+        {showPreviewModal && previewUrl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowPreviewModal(false);
+                setPreviewFile(null);
+                setPreviewUrl(null);
+              }}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 dark:border-slate-800"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
+                    <ImageIcon size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Konfirmasi Bukti</h3>
+                    <p className="text-xs text-slate-500 font-medium">Pastikan foto terlihat jelas</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowPreviewModal(false);
+                    setPreviewFile(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Preview Image */}
+              <div className="p-6">
+                <div className="aspect-[4/3] w-full rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700">
+                  <img 
+                    src={previewUrl} 
+                    alt="Preview" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/20 flex gap-3">
+                  <ShieldQuestion className="text-blue-600 shrink-0" size={18} />
+                  <p className="text-[11px] font-bold text-blue-800 dark:text-blue-400 leading-relaxed">
+                    Bukti ini akan membantu Admin memproses pesanan Anda lebih cepat. Gunakan foto asli dari aplikasi bank atau struk ATM.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-6 pt-0 flex gap-3">
+                <button 
+                  onClick={() => {
+                    setShowPreviewModal(false);
+                    setPreviewFile(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={executeUpload}
+                  disabled={uploadingProof}
+                  className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  {uploadingProof ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  Unggah Sekarang
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       </div>
 
       {/* Custom Confirmation Modal */}
@@ -866,8 +988,10 @@ export default function ProfilePage() {
                   </button>
                   <button
                     onClick={() => confirmModal.txId && handleCancelTx(confirmModal.txId)}
-                    className="flex-1 py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-500/25 active:scale-95"
+                    disabled={cancelling}
+                    className="flex-1 py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-500/25 active:scale-95 flex items-center justify-center gap-2"
                   >
+                    {cancelling ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
                     Ya, Batalkan
                   </button>
                 </div>

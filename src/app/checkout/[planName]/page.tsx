@@ -21,7 +21,9 @@ import {
   Upload,
   Image as ImageIcon,
   Headphones,
-  LifeBuoy
+  LifeBuoy,
+  X,
+  ShieldQuestion
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -62,6 +64,10 @@ export default function CheckoutPage() {
   const [showWAHelp, setShowWAHelp] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -161,7 +167,12 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleConfirmSent = async () => {
+  const handleConfirmSent = () => {
+    setShowConfirmModal(true);
+  };
+
+  const executeConfirmSent = async () => {
+    setShowConfirmModal(false);
     setConfirming(true);
     const res = await confirmPaymentSent(transaction.id);
     if (res.success) {
@@ -180,7 +191,7 @@ export default function CheckoutPage() {
     setConfirming(false);
   };
 
-  const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -189,15 +200,32 @@ export default function CheckoutPage() {
       return;
     }
 
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result as string);
+      setPreviewFile(file);
+      setShowPreviewModal(true);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input value so same file can be selected again
+    e.target.value = '';
+  };
+
+  const executeUpload = async () => {
+    if (!previewFile) return;
+
     setUploadingProof(true);
+    setShowPreviewModal(false);
+    
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = previewFile.name.split('.').pop();
       const fileName = `${transaction.order_id}-${Math.random()}.${fileExt}`;
       const filePath = `proofs/${fileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from('payment-proofs')
-        .upload(filePath, file);
+        .upload(filePath, previewFile);
 
       if (uploadError) throw uploadError;
 
@@ -224,6 +252,8 @@ export default function CheckoutPage() {
       toast.error('Gagal mengunggah bukti: ' + error.message);
     } finally {
       setUploadingProof(false);
+      setPreviewFile(null);
+      setPreviewUrl(null);
     }
   };
 
@@ -492,13 +522,66 @@ export default function CheckoutPage() {
                     </div>
 
                     {transaction.status === 'pending' ? (
-                      <button 
-                        onClick={handleConfirmSent}
-                        disabled={confirming}
-                        className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95"
-                      >
-                        {confirming ? <Loader2 size={20} className="animate-spin" /> : <>Saya Sudah Transfer <CheckCircle2 size={20} /></>}
-                      </button>
+                      <div className="space-y-6">
+                        {/* Optional Upload Section Before Confirm */}
+                        <div className="space-y-3">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Upload Bukti Transfer (Opsional)</p>
+                          {transaction.proof_url ? (
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800 flex items-center justify-between gap-3 relative overflow-hidden group">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 overflow-hidden shrink-0">
+                                  <img src={transaction.proof_url} alt="Proof" className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <p className="text-[10px] font-black text-emerald-600 uppercase truncate">Bukti Terunggah</p>
+                                  <p className="text-[8px] text-emerald-500 font-bold truncate">Siap untuk dikonfirmasi</p>
+                                </div>
+                              </div>
+                              <div className="relative z-10 shrink-0">
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                onChange={handleFileSelect}
+                                  disabled={uploadingProof}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                  title="Ganti Bukti Transfer"
+                                />
+                                <button className="px-3 py-2 bg-emerald-100 dark:bg-emerald-800/50 hover:bg-emerald-200 dark:hover:bg-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-xl transition-colors text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                  {uploadingProof ? <Loader2 size={14} className="animate-spin" /> : <>Ganti <Upload size={14} /></>}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleFileSelect}
+                                disabled={uploadingProof}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                              />
+                              <div className="py-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                {uploadingProof ? (
+                                  <Loader2 size={24} className="animate-spin text-blue-600" />
+                                ) : (
+                                  <>
+                                    <Upload size={24} className="text-slate-400" />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Pilih Foto Bukti</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <button 
+                          onClick={handleConfirmSent}
+                          disabled={confirming}
+                          className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95"
+                        >
+                          {confirming ? <Loader2 size={20} className="animate-spin" /> : <>Saya Sudah Transfer <CheckCircle2 size={20} /></>}
+                        </button>
+                      </div>
                     ) : (
                       <div className="space-y-4">
                         <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800 text-center">
@@ -507,17 +590,32 @@ export default function CheckoutPage() {
                           <p className="text-xs text-slate-500 font-medium leading-relaxed">Admin sedang mengecek transferan Anda. Proses ini biasanya memakan waktu 5-15 menit.</p>
                         </div>
 
-                        {/* Optional Upload Section */}
+                        {/* Upload Section Also Available Here in Case They Haven't */}
                         <div className="space-y-3">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Upload Bukti Transfer (Opsional)</p>
                           {transaction.proof_url ? (
-                            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800 flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 overflow-hidden shrink-0">
-                                <img src={transaction.proof_url} alt="Proof" className="w-full h-full object-cover" />
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800 flex items-center justify-between gap-3 relative overflow-hidden group">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 overflow-hidden shrink-0">
+                                  <img src={transaction.proof_url} alt="Proof" className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <p className="text-[10px] font-black text-emerald-600 uppercase truncate">Bukti Terunggah</p>
+                                  <p className="text-[8px] text-emerald-500 font-bold truncate">Membantu mempercepat verifikasi admin</p>
+                                </div>
                               </div>
-                              <div className="flex-1 overflow-hidden">
-                                <p className="text-[10px] font-black text-emerald-600 uppercase truncate">Bukti Terunggah</p>
-                                <p className="text-[8px] text-emerald-500 font-bold truncate">Akan mempercepat verifikasi admin</p>
+                              <div className="relative z-10 shrink-0">
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                onChange={handleFileSelect}
+                                  disabled={uploadingProof}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                  title="Ganti Bukti Transfer"
+                                />
+                                <button className="px-3 py-2 bg-emerald-100 dark:bg-emerald-800/50 hover:bg-emerald-200 dark:hover:bg-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-xl transition-colors text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                  {uploadingProof ? <Loader2 size={14} className="animate-spin" /> : <>Ganti <Upload size={14} /></>}
+                                </button>
                               </div>
                             </div>
                           ) : (
@@ -525,7 +623,7 @@ export default function CheckoutPage() {
                               <input 
                                 type="file" 
                                 accept="image/*" 
-                                onChange={handleUploadProof}
+                                onChange={handleFileSelect}
                                 disabled={uploadingProof}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                               />
@@ -599,6 +697,94 @@ export default function CheckoutPage() {
         </div>
       </main>
 
+      <AnimatePresence>
+        {showPreviewModal && previewUrl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowPreviewModal(false);
+                setPreviewFile(null);
+                setPreviewUrl(null);
+              }}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 dark:border-slate-800"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
+                    <ImageIcon size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Konfirmasi Bukti</h3>
+                    <p className="text-xs text-slate-500 font-medium">Pastikan foto terlihat jelas</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowPreviewModal(false);
+                    setPreviewFile(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Preview Image */}
+              <div className="p-6">
+                <div className="aspect-[4/3] w-full rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700">
+                  <img 
+                    src={previewUrl} 
+                    alt="Preview" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/20 flex gap-3">
+                  <ShieldQuestion className="text-blue-600 shrink-0" size={18} />
+                  <p className="text-[11px] font-bold text-blue-800 dark:text-blue-400 leading-relaxed">
+                    Bukti ini akan membantu Admin memproses pesanan Anda lebih cepat. Gunakan foto asli dari aplikasi bank atau struk ATM.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-6 pt-0 flex gap-3">
+                <button 
+                  onClick={() => {
+                    setShowPreviewModal(false);
+                    setPreviewFile(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={executeUpload}
+                  disabled={uploadingProof}
+                  className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2"
+                >
+                  {uploadingProof ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  Unggah Sekarang
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <Footer />
 
       {/* Custom Confirmation Modal */}
@@ -642,6 +828,54 @@ export default function CheckoutPage() {
                     className="flex-1 py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-500/25 active:scale-95"
                   >
                     Ya, Batalkan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {/* Transfer Confirmation Modal */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800"
+            >
+              <div className="space-y-6">
+                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600">
+                  <Banknote size={32} />
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Sudah Transfer?</h3>
+                  <p className="text-slate-500 font-medium leading-relaxed">
+                    Pastikan Anda telah melakukan transfer dengan nominal yang **tepat** (termasuk kode unik) agar verifikasi otomatis berjalan lancar.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    onClick={() => setShowConfirmModal(false)}
+                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Cek Lagi
+                  </button>
+                  <button
+                    onClick={executeConfirmSent}
+                    disabled={confirming}
+                    className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {confirming ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+                    Ya, Sudah
                   </button>
                 </div>
               </div>

@@ -337,6 +337,7 @@ export async function initiateCheckout(planName: string, amount: number, payment
 
 export async function confirmPaymentSent(transactionId: string) {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
   try {
     const { error } = await supabase
       .from('transactions')
@@ -344,6 +345,32 @@ export async function confirmPaymentSent(transactionId: string) {
       .eq('id', transactionId);
 
     if (error) throw error;
+
+    // Get Transaction & User Detail for Telegram
+    const { data: tx } = await adminSupabase
+      .from('transactions')
+      .select('*, profiles(email)')
+      .eq('id', transactionId)
+      .single();
+
+    if (tx) {
+      const amount = (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID');
+      const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const adminLink = `${siteUrl}/admin`;
+      
+      const message = `
+<b>✅ Pembayaran Dikonfirmasi User!</b>
+━━━━━━━━━━━━━━━━━━
+<b>User:</b> ${tx.profiles?.email || 'Unknown'}
+<b>Paket:</b> ${tx.plan_name}
+<b>Total:</b> Rp ${amount}
+<b>ID:</b> <code>${transactionId}</code>
+
+<i>User telah mengklik tombol "Saya Sudah Transfer". Silakan cek mutasi Anda.</i>
+      `;
+      await sendTelegramNotification(message, tx.proof_url || undefined, adminLink, '🔍 Cek & Setujui');
+    }
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -711,47 +738,48 @@ export async function getAllHistoryAdmin() {
   }
 }
 
-export async function updateTransactionProof(transactionId: string, proofUrl: string) {
+export async function updateTransactionProof(transactionId: string, proofUrl: string, shouldNotifyAdmin: boolean = false) {
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
   
   try {
-    // 1. Update proof_url and status to verifying
+    // 1. Update proof_url only. Do not force status to 'verifying' automatically 
+    // so it doesn't bypass the 'Saya Sudah Transfer' confirmation button.
     const { error } = await supabase
       .from('transactions')
       .update({ 
-        proof_url: proofUrl,
-        status: 'verifying'
+        proof_url: proofUrl
       })
       .eq('id', transactionId);
 
     if (error) throw error;
 
-    // 2. Get Transaction & User Detail for Telegram
-    const { data: tx } = await adminSupabase
-      .from('transactions')
-      .select('*, profiles(email)')
-      .eq('id', transactionId)
-      .single();
+    // 2. Send notification if requested (usually from Profile page)
+    if (shouldNotifyAdmin) {
+      const { data: tx } = await adminSupabase
+        .from('transactions')
+        .select('*, profiles(email)')
+        .eq('id', transactionId)
+        .single();
 
-    if (tx) {
-      const amount = (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID');
-      const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-      const adminLink = `${siteUrl}/admin`;
-      
-      const message = `
-<b>🔔 Bukti Bayar Baru!</b>
+      if (tx) {
+        const amount = (tx.amount + (tx.unique_code || 0)).toLocaleString('id-ID');
+        const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        const adminLink = `${siteUrl}/admin`;
+        
+        const message = `
+<b>📸 Bukti Bayar Baru Diunggah! (Profil)</b>
 ━━━━━━━━━━━━━━━━━━
 <b>User:</b> ${tx.profiles?.email || 'Unknown'}
 <b>Paket:</b> ${tx.plan_name}
 <b>Total:</b> Rp ${amount}
 <b>ID:</b> <code>${transactionId}</code>
 
-<i>Silakan cek mutasi dan konfirmasi melalui tombol di bawah.</i>
-      `;
-      
-      // Send to Telegram with Button
-      await sendTelegramNotification(message, proofUrl, adminLink, '👉 Buka Dashboard Admin');
+<i>User mengunggah bukti transfer melalui halaman profil. Silakan cek verifikasi.</i>
+        `;
+        
+        await sendTelegramNotification(message, proofUrl, adminLink, '🔍 Cek Sekarang');
+      }
     }
 
     return { success: true };

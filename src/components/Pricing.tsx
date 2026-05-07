@@ -29,7 +29,7 @@ const plans = [
   },
   { 
     name: 'Plus', 
-    price: '20.000', 
+    price: '15.000', 
     description: 'Cocok untuk kreator yang baru mulai.',
     features: [
       '10 Kredit / Bulan',
@@ -50,7 +50,7 @@ const plans = [
     price: '50.000', 
     description: 'Pilihan terbaik untuk kreator aktif.',
     features: [
-      '30 Kredit / Bulan',
+      '50 Kredit / Bulan',
       'Akses Semua Format Konten',
       'Akses Semua Fitur AI',
       'Arsip Proyek Cloud',
@@ -69,7 +69,7 @@ const plans = [
     price: '75.000', 
     description: 'Untuk kreator profesional & power user.',
     features: [
-      '50 Kredit / Bulan',
+      '150 Kredit / Bulan',
       'Akses Semua Format Konten',
       'Akses Semua Fitur AI',
       'Arsip Proyek Cloud',

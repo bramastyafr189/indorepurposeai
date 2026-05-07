@@ -45,7 +45,7 @@ import Link from 'next/link';
 type Step = 'method' | 'confirm' | 'instructions';
 
 const PLANS = {
-  'Plus': { price: 20000, color: 'amber' },
+  'Plus': { price: 15000, color: 'amber' },
   'Pro': { price: 50000, color: 'blue' },
   'Max': { price: 75000, color: 'indigo' }
 } as const;

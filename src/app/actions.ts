@@ -483,8 +483,8 @@ export async function approveTransaction(transactionId: string) {
 
     // 3. Determine credits
     let creditsToAdd = 0;
-    if (tx.plan_name === 'Max') creditsToAdd = 50;
-    else if (tx.plan_name === 'Pro') creditsToAdd = 30;
+    if (tx.plan_name === 'Max') creditsToAdd = 150;
+    else if (tx.plan_name === 'Pro') creditsToAdd = 50;
     else if (tx.plan_name === 'Plus') creditsToAdd = 10;
     else creditsToAdd = 10; // Default
 

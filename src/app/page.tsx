@@ -52,6 +52,7 @@ export default function Home() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean, id: string }>({ show: false, id: '' });
   const [youtubeId, setYoutubeId] = useState<string | null>(null);
   const [isArticle, setIsArticle] = useState(false);
+  const [videoTitle, setVideoTitle] = useState<string | null>(null);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
@@ -188,6 +189,17 @@ export default function Home() {
       setIsArticle(false);
     }
   }, [input, mode]);
+
+  useEffect(() => {
+    if (youtubeId) {
+      fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${youtubeId}&format=json`)
+        .then(res => res.json())
+        .then(data => setVideoTitle(data.title))
+        .catch(() => setVideoTitle('YouTube Video Detected'));
+    } else {
+      setVideoTitle(null);
+    }
+  }, [youtubeId]);
 
   // Prevent accidental refresh/close during processing
   useEffect(() => {
@@ -599,7 +611,9 @@ export default function Home() {
                                 <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">YouTube Video Detected</span>
                               </div>
-                              <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white line-clamp-1">Siap untuk diproses ulang menjadi konten viral!</h4>
+                              <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white line-clamp-2">
+                                {videoTitle || 'Mendeteksi video...'}
+                              </h4>
                               <p className="text-[11px] text-slate-500 font-medium">Video ini akan dikonversi menjadi format X, LinkedIn, Instagram, TikTok, Threads, Newsletter, Highlights, & Blog Post.</p>
                             </div>
                           </motion.div>

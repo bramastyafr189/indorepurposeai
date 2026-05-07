@@ -50,6 +50,8 @@ export default function Home() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<{ platform: string, content: string }>({ platform: '', content: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean, id: string }>({ show: false, id: '' });
+  const [youtubeId, setYoutubeId] = useState<string | null>(null);
+  const [isArticle, setIsArticle] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
@@ -138,6 +140,54 @@ export default function Home() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const getYouTubeIdFromUrl = (url: string) => {
+      try {
+        const trimmed = url.trim();
+        if (!trimmed.includes('youtube.com') && !trimmed.includes('youtu.be')) return null;
+        
+        // Handle youtu.be
+        if (trimmed.includes('youtu.be')) {
+          const parts = trimmed.split('/');
+          return parts[parts.length - 1].split('?')[0];
+        }
+        
+        const urlObj = new URL(trimmed);
+        
+        // Handle youtube.com/watch
+        if (urlObj.pathname === '/watch') {
+          return urlObj.searchParams.get('v');
+        }
+        
+        // Handle youtube.com/shorts
+        if (urlObj.pathname.startsWith('/shorts/')) {
+          return urlObj.pathname.split('/')[2];
+        }
+        
+        return null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    if (mode === 'url' && input) {
+      const ytId = getYouTubeIdFromUrl(input);
+      setYoutubeId(ytId);
+      
+      if (!ytId) {
+        // Simple article/blog detection
+        const trimmed = input.trim();
+        const isUrl = (trimmed.startsWith('http://') || trimmed.startsWith('https://')) && trimmed.length > 10;
+        setIsArticle(isUrl);
+      } else {
+        setIsArticle(false);
+      }
+    } else {
+      setYoutubeId(null);
+      setIsArticle(false);
+    }
+  }, [input, mode]);
 
   // Prevent accidental refresh/close during processing
   useEffect(() => {
@@ -415,7 +465,7 @@ export default function Home() {
                   <button
                     onClick={() => setMode('url')}
                     className={cn(
-                      "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10",
+                      "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10 group/tab",
                       mode === 'url' ? "text-blue-600 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     )}
                   >
@@ -427,10 +477,22 @@ export default function Home() {
                       />
                     )}
                     <div className="relative z-20 flex items-center gap-2">
-                      <div className="flex -space-x-1 items-center">
-                        <YoutubeIcon size={18} />
-                        <div className="bg-white dark:bg-slate-700 rounded-full p-0.5 border border-slate-200 dark:border-slate-800 -ml-1.5 mt-2">
-                          <ArrowUpRight size={10} className="text-blue-600" />
+                      <div className="flex -space-x-2 group-hover/tab:-space-x-0.5 items-center transition-all duration-500 ease-out">
+                        <div className={cn(
+                          "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-500 z-20 border-2",
+                          mode === 'url' 
+                            ? "bg-red-500 text-white border-white dark:border-slate-700 shadow-lg shadow-red-500/20 scale-110 group-hover/tab:-rotate-12" 
+                            : "bg-slate-200 dark:bg-slate-800 text-slate-500 border-slate-100 dark:border-slate-700"
+                        )}>
+                          <YoutubeIcon size={12} fill={mode === 'url' ? "currentColor" : "none"} />
+                        </div>
+                        <div className={cn(
+                          "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-500 z-10 border-2",
+                          mode === 'url' 
+                            ? "bg-emerald-500 text-white border-white dark:border-slate-700 shadow-lg shadow-emerald-500/20 group-hover/tab:rotate-12" 
+                            : "bg-slate-300 dark:bg-slate-700 text-slate-600 border-slate-100 dark:border-slate-700"
+                        )}>
+                          <FileText size={10} />
                         </div>
                       </div>
                       <span>Tautan</span>
@@ -480,13 +542,69 @@ export default function Home() {
                       }}
                       className="overflow-hidden p-4 -m-4"
                     >
-                      <input
-                        type="text"
-                        placeholder="Tempel URL YouTube atau link artikel berita/blog..."
-                        className="w-full px-5 md:px-6 py-4 rounded-2xl md:rounded-[2rem] border-2 border-white/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 outline-none transition-all text-base md:text-lg placeholder:text-slate-400 font-sans shadow-inner"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                      />
+                      <div className="relative group">
+                        <input
+                          type="text"
+                          placeholder="Tempel URL YouTube atau link artikel berita/blog..."
+                          className={cn(
+                            "w-full px-5 md:px-6 lg:pr-40 py-5 md:py-6 rounded-2xl md:rounded-[2.5rem] border-2 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md outline-none transition-all text-base md:text-xl placeholder:text-slate-400 font-sans shadow-inner",
+                            youtubeId 
+                              ? "border-red-500/30 focus:ring-4 focus:ring-red-500/15 focus:border-red-500" 
+                              : "border-white/50 dark:border-slate-800/50 focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500"
+                          )}
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                        />
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-2">
+                          <div className="flex flex-col items-end">
+                            <span className={cn(
+                              "px-3 py-1 text-[8px] font-black uppercase tracking-[0.2em] rounded-full border transition-all duration-300",
+                              youtubeId 
+                                ? "bg-red-500/10 text-red-600 border-red-500/20" 
+                                : isArticle 
+                                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
+                            )}>
+                              {youtubeId 
+                                ? (input.includes('/shorts/') ? 'Shorts Detected' : 'Video Detected') 
+                                : isArticle ? 'Article Detected' : 'Waiting for YT/Blog URL'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <AnimatePresence>
+                        {youtubeId && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                            className="mt-4 overflow-hidden rounded-[2rem] border border-red-500/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 flex flex-col md:flex-row items-center gap-6 shadow-xl shadow-red-500/5"
+                          >
+                            <div className="relative group/thumb w-full md:w-48 aspect-video rounded-xl overflow-hidden shadow-lg border border-red-500/10">
+                              <img 
+                                src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`} 
+                                alt="Video Thumbnail"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110"
+                              />
+                              <div className="absolute inset-0 bg-red-600/10 group-hover/thumb:bg-transparent transition-colors" />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+                                <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl shadow-red-600/40 scale-75 group-hover/thumb:scale-100 transition-transform">
+                                  <YoutubeIcon size={24} fill="currentColor" />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-1 text-center md:text-left space-y-1">
+                              <div className="flex items-center justify-center md:justify-start gap-2 text-red-600 mb-1">
+                                <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">YouTube Video Detected</span>
+                              </div>
+                              <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white line-clamp-1">Siap untuk diproses ulang menjadi konten viral!</h4>
+                              <p className="text-[11px] text-slate-500 font-medium">Video ini akan dikonversi menjadi format X, LinkedIn, Instagram, TikTok, Threads, Newsletter, Highlights, & Blog Post.</p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   ) : (
                     <motion.div 

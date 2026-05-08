@@ -15,7 +15,7 @@ const plans = [
     price: '0', 
     description: 'Untuk mencoba keajaiban AI kami.',
     features: [
-      '2 Kredit Gratis',
+      '3 Kredit Gratis',
       'Akses Semua Format Konten',
       'Akses Semua Fitur AI',
       'Arsip Proyek Cloud',

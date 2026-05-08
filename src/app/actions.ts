@@ -2,12 +2,27 @@
 
 import { getYoutubeTranscript } from "@/lib/youtube";
 import { getArticleContent } from "@/lib/scraper";
-import { repurposeAllContent } from "@/lib/ai-engine";
+import { repurposeAllContent, generateDevSpec } from "@/lib/ai-engine";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { sendTelegramNotification } from "@/lib/notifications";
 
-export async function processContent(input: string, mode: 'url' | 'text', tone: string = "professional") {
+export async function processContent(
+  input: string, 
+  mode: 'url' | 'text', 
+  tone: string = "professional", 
+  appType: 'repurpose' | 'devspec' = 'repurpose',
+  options?: { 
+    businessFlow?: string; 
+    requiredTables?: string; 
+    techStackPrefs?: string;
+    requiredFeatures?: string;
+    themePrefs?: string;
+    targetPlatform?: string;
+    scalabilityTarget?: string;
+    budgetConstraints?: string;
+  }
+) {
   const supabase = await createClient();
   
   try {
@@ -23,36 +38,55 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.credits <= 0) {
-      return { success: false, error: 'Kredit Anda habis. Silakan hubungi admin atau upgrade paket.' };
+    const cost = appType === 'devspec' ? 3 : 1;
+    if (!profile || profile.credits < cost) {
+      return { success: false, error: `Kredit Anda tidak cukup. Mode ${appType === 'devspec' ? 'DevSpec' : 'Repurpose'} membutuhkan ${cost} kredit.` };
     }
 
     let sourceContent = input;
 
     // 1. Check for cached version
+    const combinedTone = `${appType}|${tone}`;
+    
+    // Check correct table
+    const tableToSearch = appType === 'devspec' ? 'devspec_history' : 'history';
     const { data: cachedData, error: fetchError } = await supabase
-      .from('history')
+      .from(tableToSearch)
       .select('*')
       .eq('input_content', input)
-      .eq('tone', tone)
       .eq('user_id', user.id)
       .limit(1)
       .single();
 
     if (cachedData && !fetchError) {
-      return {
-        success: true,
-        data: {
-          x: cachedData.result_x,
-          linkedin: cachedData.result_linkedin,
-          instagram: cachedData.result_instagram,
-          tiktok: cachedData.result_tiktok,
-          newsletter: cachedData.result_newsletter,
-          threads: cachedData.result_threads,
-          highlights: cachedData.result_highlights,
-          blog: cachedData.result_blog
-        }
-      };
+      if (appType === 'repurpose') {
+        return {
+          success: true,
+          data: {
+            x: cachedData.result_x,
+            linkedin: cachedData.result_linkedin,
+            instagram: cachedData.result_instagram,
+            tiktok: cachedData.result_tiktok,
+            newsletter: cachedData.result_newsletter,
+            threads: cachedData.result_threads,
+            highlights: cachedData.result_highlights,
+            blog: cachedData.result_blog
+          }
+        };
+      } else {
+        return {
+          success: true,
+          data: {
+            context: cachedData.context,
+            features: cachedData.features,
+            tech_stack: cachedData.tech_stack,
+            data_schema: cachedData.data_schema,
+            project_structure: cachedData.project_structure,
+            system_prompt: cachedData.system_prompt,
+            user_stories: cachedData.user_stories
+          }
+        };
+      }
     }
 
     // 2. Cache Miss: Get content
@@ -63,20 +97,72 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
       } else {
         sourceContent = await getArticleContent(input);
       }
+    } else {
+      // mode === 'text' - Auto detect URL in text
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urls = input.match(urlRegex);
+      
+      if (urls && urls.length > 0) {
+        const firstUrl = urls[0];
+        const isYouTube = firstUrl.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\//);
+        
+        try {
+          let extractedUrlContent = "";
+          if (isYouTube) {
+            extractedUrlContent = await getYoutubeTranscript(firstUrl);
+          } else {
+            extractedUrlContent = await getArticleContent(firstUrl);
+          }
+          
+          if (extractedUrlContent) {
+            sourceContent = `[Konteks Referensi dari URL: ${firstUrl}]\n${extractedUrlContent}\n\n[Instruksi/Ide Tambahan dari Pengguna]\n${input}`;
+          }
+        } catch (e) {
+          console.warn('Gagal mengambil konten dari URL yang disisipkan:', e);
+          // If fail, proceed with original text
+        }
+      }
     }
 
     // 3. Call AI Engine
-    const { results, modelId } = await repurposeAllContent(sourceContent, tone, user.id);
+    const { results, modelId } = appType === 'repurpose' 
+      ? await repurposeAllContent(sourceContent, tone, user.id)
+      : await generateDevSpec(sourceContent, tone, user.id, options);
 
     // 4. Save to Supabase & Deduct Credit
-    const { error: saveError } = await supabase
-      .from('history')
-      .insert([
-        { 
+    let saveError;
+    if (appType === 'devspec') {
+      const { error } = await supabase
+        .from('devspec_history')
+        .insert([{
+          user_id: user.id,
+          input_content: input,
+          business_flow: options?.businessFlow || null,
+          required_tables: options?.requiredTables || null,
+          tech_stack_prefs: options?.techStackPrefs || null,
+          required_features: options?.requiredFeatures || null,
+          theme_prefs: options?.themePrefs || null,
+          target_platform: options?.targetPlatform || null,
+          scalability_target: options?.scalabilityTarget || null,
+          budget_constraints: options?.budgetConstraints || null,
+          model_id: modelId,
+          context: results.context,
+          features: results.features,
+          tech_stack: results.tech_stack,
+          data_schema: results.data_schema,
+          project_structure: results.project_structure,
+          system_prompt: results.system_prompt,
+          user_stories: results.user_stories
+        }]);
+      saveError = error;
+    } else {
+      const { error } = await supabase
+        .from('history')
+        .insert([{ 
           user_id: user.id,
           input_content: input, 
           mode, 
-          tone,
+          tone: combinedTone,
           model_id: modelId,
           result_x: results.x, 
           result_linkedin: results.linkedin,
@@ -86,14 +172,16 @@ export async function processContent(input: string, mode: 'url' | 'text', tone: 
           result_threads: results.threads,
           result_highlights: results.highlights,
           result_blog: results.blog
-        }
-      ]);
+        }]);
+      saveError = error;
+    }
 
     if (!saveError) {
       // Deduct credit
+      const cost = appType === 'devspec' ? 2 : 1;
       await supabase
         .from('profiles')
-        .update({ credits: profile.credits - 1 })
+        .update({ credits: profile.credits - cost })
         .eq('id', user.id);
     } else {
       console.error('Failed to save to Supabase:', saveError);
@@ -113,22 +201,30 @@ export async function getHistory() {
   const supabase = await createClient();
   
   try {
-    const { data, error } = await supabase
-      .from('history')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
+    // Fetch from both tables
+    const [historyRes, devspecRes] = await Promise.all([
+      supabase.from('history').select('*').order('created_at', { ascending: false }).limit(10),
+      supabase.from('devspec_history').select('*').order('created_at', { ascending: false }).limit(10)
+    ]);
 
-    if (error) throw error;
-    // ... data mapping logic stays the same (RLS handles user filtering implicitly)
-    return {
-      success: true,
-      data: data.map(item => ({
+    if (historyRes.error) throw historyRes.error;
+    if (devspecRes.error && devspecRes.error.code !== '42P01') { 
+      // Ignore 42P01 if devspec_history table doesn't exist yet for some users
+      throw devspecRes.error;
+    }
+
+    const repurposeItems = (historyRes.data || []).map(item => {
+      const toneParts = (item.tone || 'repurpose|professional').split('|');
+      const itemAppType = toneParts.length > 1 ? toneParts[0] : 'repurpose';
+      const itemTone = toneParts.length > 1 ? toneParts[1] : toneParts[0];
+
+      return {
         id: item.id,
         timestamp: new Date(item.created_at).getTime(),
         input: item.input_content,
-        mode: item.mode,
-        tone: item.tone || 'professional',
+        mode: item.mode as 'url' | 'text',
+        app_type: itemAppType,
+        tone: itemTone,
         results: {
           x: item.result_x,
           linkedin: item.result_linkedin,
@@ -139,7 +235,35 @@ export async function getHistory() {
           highlights: item.result_highlights,
           blog: item.result_blog
         }
-      }))
+      };
+    });
+
+    const devspecItems = (devspecRes.data || []).map(item => ({
+      id: item.id,
+      timestamp: new Date(item.created_at).getTime(),
+      input: item.input_content,
+      mode: 'text', // Forced text mode for devspec
+      app_type: 'devspec',
+      tone: 'professional', // Default for devspec
+      results: {
+        context: item.context,
+        features: item.features,
+        tech_stack: item.tech_stack,
+        data_schema: item.data_schema,
+        project_structure: item.project_structure,
+        system_prompt: item.system_prompt,
+        user_stories: item.user_stories
+      }
+    }));
+
+    // Combine and sort by timestamp descending
+    const combined = [...repurposeItems, ...devspecItems]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 10); // Keep top 10 overall
+
+    return {
+      success: true,
+      data: combined
     };
   } catch (error: any) {
     return { success: false, error: error.message };

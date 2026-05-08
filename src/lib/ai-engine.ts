@@ -58,7 +58,7 @@ export const logAIError = async (modelName: string, errorMessage: string, inputP
   }
 }
 
-async function generateWithRetry(prompt: string, tone: string, userId?: string) {
+export async function generateWithRetry(prompt: string, tone: string, userId?: string) {
   let lastError: any;
   const models = await getOrderedModels();
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -226,4 +226,56 @@ export const repurposeAllContent = async (content: string, tone: string = "profe
 export const repurposeContent = async (content: string, platform: 'x' | 'linkedin' | 'instagram' | 'tiktok' | 'newsletter' | 'threads' | 'highlights' | 'blog', tone: string = "professional", userId?: string) => {
   const { results } = await repurposeAllContent(content, tone, userId);
   return results[platform];
+};
+export const generateDevSpec = async (
+  content: string, 
+  tone: string = "professional", 
+  userId?: string,
+  options?: { 
+    businessFlow?: string; 
+    requiredTables?: string; 
+    techStackPrefs?: string;
+    requiredFeatures?: string;
+    themePrefs?: string;
+    targetPlatform?: string;
+    scalabilityTarget?: string;
+    budgetConstraints?: string;
+  }
+) => {
+  const constraints = [];
+  if (options?.businessFlow) constraints.push(`- ALUR BISNIS WAJIB: ${options.businessFlow}`);
+  if (options?.requiredTables) constraints.push(`- TABEL/DATA WAJIB: ${options.requiredTables}`);
+  if (options?.techStackPrefs) constraints.push(`- TECH STACK WAJIB: Gunakan kombinasi stack berikut: ${options.techStackPrefs}`);
+  if (options?.requiredFeatures) constraints.push(`- FITUR WAJIB: Aplikasi harus memiliki fitur-fitur ini: ${options.requiredFeatures}`);
+  if (options?.themePrefs) constraints.push(`- TEMA/DESAIN WAJIB: ${options.themePrefs}`);
+  if (options?.targetPlatform) constraints.push(`- PLATFORM TARGET: ${options.targetPlatform}`);
+  if (options?.scalabilityTarget) constraints.push(`- SKALA TRAFIK TARGET: ${options.scalabilityTarget}. (Sesuaikan rekomendasi arsitektur dengan skala ini)`);
+  if (options?.budgetConstraints) constraints.push(`- ANGGARAN SERVER/INFRASTRUKTUR: ${options.budgetConstraints}. (PASTIKAN rekomendasi Tech Stack dan Hosting sangat mematuhi batas anggaran ini)`);
+
+  const constraintSection = constraints.length > 0 
+    ? `\n\n  PREFERENSI/KENDALA DARI PENGGUNA (WAJIB DIIKUTI):\n  ${constraints.join('\n  ')}`
+    : "";
+
+  const prompt = `Analisis konten teknis atau bisnis berikut dan hasilkan "Technical Specification" yang komprehensif. 
+  Spesifikasi ini dirancang khusus untuk diberikan kepada AI Coding Assistant (seperti Cursor, Windsurf, atau Antigravity) agar bisa membangun fitur tersebut dengan akurat.${constraintSection}
+
+  STRUKTUR OUTPUT (WAJIB JSON):
+  1. context: Ringkasan proyek dan tujuan utamanya.
+  2. features: Daftar fitur fungsional yang harus dibangun (ekstrak detail dari konten).
+  3. tech_stack: Rekomendasi teknologi (Frontend, Backend, Database, Auth, dll) yang paling efisien.
+  4. data_schema: Rancangan skema data atau tabel database yang diperlukan (gunakan format Markdown Table atau code block).
+  5. project_structure: Rekomendasi struktur folder dan file proyek yang bersih dan scalable (gunakan format tree structure).
+  6. system_prompt: Instruksi sistem 'ready-to-use' yang bisa langsung disalin ke AI Coder sebagai context utama.
+  7. user_stories: Skenario penggunaan fitur dari sisi pengguna akhir.
+
+  Konten: ${content}
+
+  ATURAN OUTPUT (WAJIB):
+  1. Kembalikan HASIL HANYA DALAM FORMAT JSON MURNI.
+  2. Kunci JSON: context, features, tech_stack, data_schema, project_structure, system_prompt, user_stories.
+  3. Gunakan Bahasa Indonesia untuk penjelasan, tapi gunakan istilah teknis standar (Inggris) untuk variabel, database, dan arsitektur.
+  4. Setiap nilai harus berupa SATU STRING TUNGGAL. Gunakan "\\n" untuk baris baru.
+  5. JANGAN gunakan markdown code blocks di luar blok JSON utama.`;
+
+  return await generateWithRetry(prompt, tone, userId);
 };

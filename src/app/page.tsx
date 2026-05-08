@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw, Search, ArrowLeft } from 'lucide-react';
+import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw, Search, ArrowLeft, Terminal, AlertTriangle } from 'lucide-react';
 import { processContent, getHistory, deleteHistory, createTicket, getTickets, getTicketMessages, sendTicketMessage } from './actions';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -24,29 +24,31 @@ interface HistoryItem {
   id: string;
   timestamp: number;
   input: string;
-  mode: 'url' | 'text';
+  mode: 'url' | 'text' | string;
   tone: string;
-  results: {
-    x: string;
-    linkedin: string;
-    instagram: string;
-    tiktok: string;
-    newsletter: string;
-    threads: string;
-    highlights: string;
-    blog: string;
-  };
+  results: any;
+  app_type?: 'repurpose' | 'devspec';
 }
 
 export default function Home() {
   const [input, setInput] = useState('');
+  const [appType, setAppType] = useState<'repurpose' | 'devspec'>('repurpose');
   const [mode, setMode] = useState<'url' | 'text'>('url');
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [results, setResults] = useState<{ x: string, linkedin: string, instagram: string, tiktok: string, newsletter: string, threads: string, highlights: string, blog: string } | null>(null);
+  const [results, setResults] = useState<any>(null);
   const [error, setError] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [tone, setTone] = useState<string>('professional');
+  const [businessFlow, setBusinessFlow] = useState('');
+  const [requiredTables, setRequiredTables] = useState('');
+  const [techStackPrefs, setTechStackPrefs] = useState('');
+  const [requiredFeatures, setRequiredFeatures] = useState('');
+  const [themePrefs, setThemePrefs] = useState('');
+  const [targetPlatform, setTargetPlatform] = useState('');
+  const [scalabilityTarget, setScalabilityTarget] = useState('');
+  const [budgetConstraints, setBudgetConstraints] = useState('');
+  const [showOptions, setShowOptions] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<{ platform: string, content: string }>({ platform: '', content: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean, id: string }>({ show: false, id: '' });
@@ -68,6 +70,9 @@ export default function Home() {
   const [displayLimit, setDisplayLimit] = useState(5);
   const resultsRef = React.useRef<HTMLDivElement>(null);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
+  const [showStickyToggle, setShowStickyToggle] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -141,6 +146,18 @@ export default function Home() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      // Show sticky toggle whenever we're past the initial hero view (e.g. 500px)
+      setShowStickyToggle(currentScrollY > 500);
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   useEffect(() => {
     const getYouTubeIdFromUrl = (url: string) => {
@@ -218,8 +235,8 @@ export default function Home() {
   const fetchHistory = async () => {
     setHistoryLoading(true);
     const res = await getHistory();
-    if (res.success) {
-      setHistory(res.data || []);
+    if (res.success && res.data) {
+      setHistory(res.data as HistoryItem[]);
     }
     setHistoryLoading(false);
   };
@@ -255,40 +272,62 @@ export default function Home() {
   const handleProcess = async () => {
     if (!input) return;
 
-    let processedInput = input;
-    if (mode === 'url') {
-      processedInput = cleanYouTubeUrl(input.trim());
-      setInput(processedInput);
-    }
-
     // Check for Login
     if (!currentUser) {
       setShowAuthModal(true);
       return;
     }
 
+    // Show confirmation modal for DevSpec mode before processing
+    if (appType === 'devspec' && !showConfirmModal) {
+      setShowConfirmModal(true);
+      return;
+    }
+
+    // Close modal if open and start processing
+    setShowConfirmModal(false);
+
+    let processedInput = input;
+    if (mode === 'url') {
+      processedInput = cleanYouTubeUrl(input.trim());
+      setInput(processedInput);
+    }
+
     setLoading(true);
     setError('');
     setResults(null);
-
-    const res = await processContent(processedInput, mode, tone);
-    
-    if (res.success) {
-      setResults(res.data);
-      toast.success('Konten berhasil diproses!');
-      
-      // Notify components to refresh credits
-      window.dispatchEvent(new CustomEvent('credits-updated'));
-      
-      fetchHistory();
-      setTimeout(() => {
-        document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
-      }, 500);
-    } else {
-      setError(res.error || 'Terjadi kesalahan sistem.');
+    try {
+      const res = await processContent(processedInput, mode, tone, appType, {
+        businessFlow,
+        requiredTables,
+        techStackPrefs,
+        requiredFeatures,
+        themePrefs,
+        targetPlatform,
+        scalabilityTarget,
+        budgetConstraints
+      });
+      if (res.success) {
+        setResults(res.data);
+        toast.success('Konten berhasil diproses!');
+        
+        // Notify components to refresh credits
+        window.dispatchEvent(new CustomEvent('credits-updated'));
+        
+        fetchHistory();
+        setTimeout(() => {
+          document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
+        }, 500);
+      } else {
+        setError(res.error || 'Terjadi kesalahan sistem.');
+        toast.error('Gagal memproses konten');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan tidak terduga.');
       toast.error('Gagal memproses konten');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const deleteHistoryItem = async (id: string, e: React.MouseEvent) => {
@@ -308,7 +347,7 @@ export default function Home() {
 
   const loadFromHistory = (item: HistoryItem) => {
     setInput(item.input);
-    setMode(item.mode);
+    setMode(item.mode as 'url' | 'text');
     setTone(item.tone); // Add this to sync tone
     setResults(item.results);
     
@@ -445,10 +484,36 @@ export default function Home() {
     });
   };
 
+  const handleCopyAllDevSpec = () => {
+    if (!results) return;
+    const mdContent = `# Technical Specification\n\n## Project Context\n${results.context}\n\n## Functional Features\n${results.features}\n\n## Tech Stack\n${results.tech_stack}\n\n## Data Schema\n${results.data_schema}\n\n## Project Architecture\n${results.project_structure}\n\n## System Prompt for AI\n${results.system_prompt}\n\n## User Stories\n${results.user_stories}`;
+    navigator.clipboard.writeText(mdContent);
+    toast.success('Seluruh Spek disalin!', {
+      description: 'Format Markdown sudah dioptimalkan untuk Cursor/Windsurf.',
+      icon: <Sparkles className="text-indigo-500" />
+    });
+  };
+
+  const handleDownloadDevSpec = () => {
+    if (!results) return;
+    const mdContent = `# Technical Specification\n\n## Project Context\n${results.context}\n\n## Functional Features\n${results.features}\n\n## Tech Stack\n${results.tech_stack}\n\n## Data Schema\n${results.data_schema}\n\n## Project Architecture\n${results.project_structure}\n\n## System Prompt for AI\n${results.system_prompt}\n\n## User Stories\n${results.user_stories}`;
+    const blob = new Blob([mdContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DevSpec_${new Date().getTime()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('File .md berhasil diunduh!');
+  };
+
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.input.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter === 'all' || item.mode === activeFilter;
-    return matchesSearch && matchesFilter;
+    const matchesFilter = (activeFilter === 'all' || item.mode === activeFilter);
+    const matchesAppType = (item.app_type || 'repurpose') === appType;
+    return matchesSearch && matchesFilter && matchesAppType;
   });
 
   return (
@@ -456,113 +521,233 @@ export default function Home() {
       <Navbar />
 
       <main className="flex-1">
-        <Hero />
+        {/* FLOATING STICKY TOGGLE */}
+        <AnimatePresence>
+          {showStickyToggle && (
+            <motion.div 
+              initial={{ y: -100, opacity: 0 }}
+              animate={{ y: 85, opacity: 1 }}
+              exit={{ y: -100, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              className="fixed top-0 left-0 right-0 z-[100] flex justify-center px-6 pointer-events-none"
+            >
+              <div className="flex p-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/20 dark:border-slate-800/50 rounded-full w-fit shadow-2xl ring-1 ring-black/5 pointer-events-auto">
+                <button 
+                  onClick={() => setAppType('repurpose')} 
+                  className={cn(
+                    "px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center gap-2 relative", 
+                    appType === 'repurpose' 
+                      ? "text-blue-600 dark:text-white" 
+                      : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                >
+                  {appType === 'repurpose' && (
+                    <motion.div 
+                      layoutId="stickyActiveAppType"
+                      className="absolute inset-0 bg-blue-50 dark:bg-slate-700 shadow-sm rounded-full border border-blue-100/50 dark:border-slate-600/50"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <div className="relative z-10 flex items-center gap-2">
+                    <RefreshCw size={12} className={cn(appType === 'repurpose' ? "animate-spin-slow" : "")} />
+                    <span>Repurpose</span>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => { setAppType('devspec'); setMode('text'); }} 
+                  className={cn(
+                    "px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center gap-2 relative", 
+                    appType === 'devspec' 
+                      ? "text-indigo-600 dark:text-white" 
+                      : "text-slate-400 hover:text-indigo-500 dark:hover:text-slate-300"
+                  )}
+                >
+                  {appType === 'devspec' && (
+                    <motion.div 
+                      layoutId="stickyActiveAppType"
+                      className="absolute inset-0 bg-indigo-50 dark:bg-slate-700 shadow-sm rounded-full border border-indigo-100/50 dark:border-slate-600/50"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <div className="relative z-10 flex items-center gap-2">
+                    <Terminal size={12} />
+                    <span>DevSpec</span>
+                    <span className="absolute -top-1 -right-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[7px] px-1.5 py-0.5 rounded-full font-black animate-pulse shadow-sm transform rotate-12">NEW</span>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Tool Section */}
-        <section id="transform" className="py-12 md:py-24 px-6 relative z-10 transition-colors duration-500">
+        {/* TOP MODE TOGGLE */}
+        <div className="pt-10 md:pt-16 pb-0 flex justify-center relative z-20">
+          <div className="flex p-1.5 bg-slate-100/80 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/20 dark:border-slate-800/50 rounded-full w-fit mx-auto shadow-2xl ring-1 ring-black/5">
+            <button 
+              onClick={() => setAppType('repurpose')} 
+              className={cn(
+                "px-6 py-3 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center gap-3 relative", 
+                appType === 'repurpose' 
+                  ? "text-blue-600 dark:text-white" 
+                  : "text-slate-400 hover:text-slate-500 dark:hover:text-slate-300"
+              )}
+            >
+              {appType === 'repurpose' && (
+                <motion.div 
+                  layoutId="activeAppType"
+                  className="absolute inset-0 bg-white dark:bg-slate-800 shadow-lg shadow-blue-500/10 rounded-full"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <div className="relative z-10 flex items-center gap-3">
+                <RefreshCw size={18} className={cn(appType === 'repurpose' ? "animate-spin-slow" : "")} />
+                <span>Repurpose</span>
+              </div>
+            </button>
+            <button 
+              onClick={() => { setAppType('devspec'); setMode('text'); }} 
+              className={cn(
+                "px-6 py-3 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center gap-3 relative", 
+                appType === 'devspec' 
+                  ? "text-indigo-600 dark:text-white" 
+                  : "text-slate-400 hover:text-slate-500 dark:hover:text-slate-300"
+              )}
+            >
+              {appType === 'devspec' && (
+                <motion.div 
+                  layoutId="activeAppType"
+                  className="absolute inset-0 bg-white dark:bg-slate-800 shadow-lg shadow-indigo-500/10 rounded-full"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <div className="relative z-10 flex items-center gap-3">
+                <Terminal size={18} />
+                <span>DevSpec</span>
+                <span className="absolute -top-2 -right-5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black shadow-lg shadow-orange-500/40 transform rotate-12 animate-bounce">NEW</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <Hero appType={appType} />
+
+        <section id="transform" className="py-12 md:py-20 px-6 relative z-10 scroll-mt-24">
           <div className="container mx-auto max-w-4xl">
+
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] as const }}
-              className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl rounded-[2rem] md:rounded-[3rem] shadow-2xl shadow-blue-500/10 border border-white/40 dark:border-slate-800/60 p-6 sm:p-8 md:p-10 relative overflow-hidden glow-blue"
+              className={cn(
+                "backdrop-blur-3xl rounded-[2rem] md:rounded-[3rem] shadow-2xl transition-all duration-1000 border-2 p-6 sm:p-8 md:p-10 relative overflow-hidden",
+                appType === 'repurpose'
+                  ? "bg-white/70 dark:bg-slate-900/70 border-blue-500/20 shadow-blue-500/10 glow-blue"
+                  : "bg-white/70 dark:bg-slate-900/70 border-indigo-500/20 shadow-indigo-500/10 glow-indigo"
+              )}
             >
               <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.08] pointer-events-none">
-                <Sparkles size={100} className="text-blue-600" />
+                <Sparkles size={100} className={appType === 'repurpose' ? "text-blue-600" : "text-indigo-600"} />
               </div>
 
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 relative z-10 w-full">
-                <div className="flex gap-2 p-2 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full w-full sm:w-fit relative overflow-hidden">
-                  <button
-                    onClick={() => setMode('url')}
-                    className={cn(
-                      "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10 group/tab",
-                      mode === 'url' ? "text-blue-600 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                  >
-                    {mode === 'url' && (
-                      <motion.div 
-                        layoutId="activeTab"
-                        className="absolute inset-0 bg-white dark:bg-slate-700 shadow-xl shadow-blue-500/10 rounded-full"
-                        transition={{ type: "spring", bounce: 0.25, duration: 0.6 }}
-                      />
-                    )}
-                    <div className="relative z-20 flex items-center gap-2">
-                      <div className="flex -space-x-2 group-hover/tab:-space-x-0.5 items-center transition-all duration-500 ease-out">
-                        <div className={cn(
-                          "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-500 z-20 border-2",
-                          mode === 'url' 
-                            ? "bg-red-500 text-white border-white dark:border-slate-700 shadow-lg shadow-red-500/20 scale-110 group-hover/tab:-rotate-12" 
-                            : "bg-slate-200 dark:bg-slate-800 text-slate-500 border-slate-100 dark:border-slate-700"
-                        )}>
-                          <YoutubeIcon size={12} fill={mode === 'url' ? "currentColor" : "none"} />
+                {appType === 'repurpose' ? (
+                  <div className="flex gap-2 p-2 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full w-full sm:w-fit relative overflow-hidden">
+                    <button
+                      onClick={() => setMode('url')}
+                      className={cn(
+                        "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10 group/tab",
+                        mode === 'url' ? "text-blue-600 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      )}
+                    >
+                      {mode === 'url' && (
+                        <motion.div 
+                          layoutId="activeTab"
+                          className="absolute inset-0 bg-white dark:bg-slate-700 shadow-xl shadow-blue-500/10 rounded-full"
+                          transition={{ type: "spring", bounce: 0.25, duration: 0.6 }}
+                        />
+                      )}
+                      <div className="relative z-20 flex items-center gap-2">
+                        <div className="flex -space-x-2 group-hover/tab:-space-x-0.5 items-center transition-all duration-500 ease-out">
+                          <div className={cn(
+                            "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-500 z-20 border-2",
+                            mode === 'url' 
+                              ? "bg-red-500 text-white border-white dark:border-slate-700 shadow-lg shadow-red-500/20 scale-110 group-hover/tab:-rotate-12" 
+                              : "bg-slate-200 dark:bg-slate-800 text-slate-500 border-slate-100 dark:border-slate-700"
+                          )}>
+                            <YoutubeIcon size={12} fill={mode === 'url' ? "currentColor" : "none"} />
+                          </div>
+                          <div className={cn(
+                            "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-500 z-10 border-2",
+                            mode === 'url' 
+                              ? "bg-emerald-500 text-white border-white dark:border-slate-700 shadow-lg shadow-emerald-500/20 group-hover/tab:rotate-12" 
+                              : "bg-slate-300 dark:bg-slate-700 text-slate-600 border-slate-100 dark:border-slate-700"
+                          )}>
+                            <FileText size={10} />
+                          </div>
                         </div>
-                        <div className={cn(
-                          "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-500 z-10 border-2",
-                          mode === 'url' 
-                            ? "bg-emerald-500 text-white border-white dark:border-slate-700 shadow-lg shadow-emerald-500/20 group-hover/tab:rotate-12" 
-                            : "bg-slate-300 dark:bg-slate-700 text-slate-600 border-slate-100 dark:border-slate-700"
-                        )}>
-                          <FileText size={10} />
-                        </div>
+                        <span>Tautan</span>
                       </div>
-                      <span>Tautan</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setMode('text')}
-                    className={cn(
-                      "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10",
-                      mode === 'text' ? "text-blue-600 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                  >
-                    {mode === 'text' && (
-                      <motion.div 
-                        layoutId="activeTab"
-                        className="absolute inset-0 bg-white dark:bg-slate-700 shadow-xl shadow-blue-500/10 rounded-full"
-                        transition={{ type: "spring", bounce: 0.25, duration: 0.6 }}
-                      />
-                    )}
-                    <div className="relative z-20 flex items-center gap-2">
-                      <FileText size={18} />
-                      <span>Teks</span>
-                    </div>
-                  </button>
-                </div>
+                    </button>
+                    <button
+                      onClick={() => setMode('text')}
+                      className={cn(
+                        "relative flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 sm:px-8 py-3.5 rounded-full transition-colors duration-500 font-black text-xs uppercase tracking-wider z-10",
+                        mode === 'text' ? "text-blue-600 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      )}
+                    >
+                      {mode === 'text' && (
+                        <motion.div 
+                          layoutId="activeTab"
+                          className="absolute inset-0 bg-white dark:bg-slate-700 shadow-xl shadow-blue-500/10 rounded-full"
+                          transition={{ type: "spring", bounce: 0.25, duration: 0.6 }}
+                        />
+                      )}
+                      <div className="relative z-20 flex items-center gap-2">
+                        <FileText size={18} />
+                        <span>Teks</span>
+                      </div>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-6 py-3.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full font-black text-xs uppercase tracking-widest border border-indigo-100 dark:border-indigo-800/50">
+                    <Terminal size={14} /> DevSpec Builder
+                  </div>
+                )}
                 
                 <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] hidden md:block">
-                  IndoRepurpose Intelligence Engine v1.0
+                  {appType === 'repurpose' ? 'IndoRepurpose AI Engine v1.0' : 'IndoRepurpose AI Engine v2.0'}
                 </p>
               </div>
 
               <motion.div 
-                layout 
-                transition={{ duration: 0.85, ease: [0.65, 0, 0.35, 1] as const }} 
-                className="mb-8 relative z-10"
+                layout
+                className="mb-0 relative z-10 overflow-hidden p-10 -m-10"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {mode === 'url' ? (
                     <motion.div 
-                      key="url"
+                      key={`url-${appType}`}
                       initial={{ opacity: 0, height: 0, y: -10 }}
                       animate={{ opacity: 1, height: 'auto', y: 0 }}
                       exit={{ opacity: 0, height: 0, y: 10 }}
                       transition={{ 
-                        duration: 0.85, 
-                        ease: [0.65, 0, 0.35, 1] as const
+                        duration: 0.5, 
+                        ease: [0.22, 1, 0.36, 1]
                       }}
-                      className="overflow-hidden p-4 -m-4"
+                      className="p-10 -m-10 overflow-hidden"
                     >
                       <div className="relative group">
                         <input
                           type="text"
-                          placeholder="Tempel URL YouTube atau link artikel berita/blog..."
+                          placeholder={appType === 'repurpose' ? "Tempel URL YouTube atau link artikel berita/blog..." : "Tempel URL tutorial YouTube atau referensi teknis..."}
                           className={cn(
                             "w-full px-5 md:px-6 lg:pr-40 py-5 md:py-6 rounded-2xl md:rounded-[2.5rem] border-2 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md outline-none transition-all text-base md:text-xl placeholder:text-slate-400 font-sans shadow-inner",
                             youtubeId 
                               ? "border-red-500/30 focus:ring-4 focus:ring-red-500/15 focus:border-red-500" 
-                              : "border-white/50 dark:border-slate-800/50 focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500"
+                              : appType === 'repurpose' 
+                                ? "border-white/50 dark:border-slate-800/50 focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500"
+                                : "border-white/50 dark:border-slate-800/50 focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-500"
                           )}
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
@@ -614,7 +799,11 @@ export default function Home() {
                               <h4 className="text-sm md:text-base font-bold text-slate-900 dark:text-white line-clamp-2">
                                 {videoTitle || 'Mendeteksi video...'}
                               </h4>
-                              <p className="text-[11px] text-slate-500 font-medium">Video ini akan dikonversi menjadi format X, LinkedIn, Instagram, TikTok, Threads, Newsletter, Highlights, & Blog Post.</p>
+                              <p className="text-[11px] text-slate-500 font-medium">
+                                {appType === 'repurpose' 
+                                  ? 'Video ini akan dikonversi menjadi format X, LinkedIn, Instagram, TikTok, Threads, Newsletter, Highlights, & Blog Post.'
+                                  : 'Video ini akan dianalisis menjadi Technical Specification (Context, Features, Tech Stack, Data Schema, System Prompt, & User Stories).'}
+                              </p>
                             </div>
                           </motion.div>
                         )}
@@ -622,19 +811,24 @@ export default function Home() {
                     </motion.div>
                   ) : (
                     <motion.div 
-                      key="text"
+                      key={`text-${appType}`}
                       initial={{ opacity: 0, height: 0, y: -10 }}
                       animate={{ opacity: 1, height: 'auto', y: 0 }}
                       exit={{ opacity: 0, height: 0, y: 10 }}
                       transition={{ 
-                        duration: 0.85, 
-                        ease: [0.65, 0, 0.35, 1] as const
+                        duration: 0.5, 
+                        ease: [0.22, 1, 0.36, 1]
                       }}
-                      className="overflow-hidden p-4 -m-4"
+                      className="p-10 -m-10 overflow-hidden"
                     >
                       <textarea
-                        placeholder="Tuliskan draf kasar atau ide brilian Anda di sini..."
-                        className="w-full px-5 md:px-6 py-4 rounded-2xl md:rounded-[2rem] border-2 border-white/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 outline-none transition-all min-h-[250px] text-base md:text-lg placeholder:text-slate-400 font-sans shadow-inner leading-relaxed"
+                        placeholder={appType === 'repurpose' ? "Tuliskan draf kasar atau ide brilian Anda di sini..." : "Jelaskan konsep aplikasi, fitur, atau logika bisnis yang ingin Anda bangun di sini..."}
+                        className={cn(
+                          "w-full px-5 md:px-6 py-4 rounded-2xl md:rounded-[2rem] border-2 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md outline-none transition-all min-h-[250px] text-base md:text-lg placeholder:text-slate-400 font-sans shadow-inner leading-relaxed",
+                          appType === 'repurpose'
+                            ? "border-white/50 dark:border-slate-800/50 focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500"
+                            : "border-white/50 dark:border-slate-800/50 focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-500"
+                        )}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                       />
@@ -643,60 +837,226 @@ export default function Home() {
                 </AnimatePresence>
               </motion.div>
 
-              {/* Brand Voice Selector */}
-              <div className="mb-10 relative z-10">
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4 ml-2">
-                  Pilih Gaya Bahasa AI (Brand Voice)
-                </p>
-                <div className="flex flex-wrap gap-2 md:gap-3">
-                  {[
-                    { id: 'professional', label: 'Profesional', icon: '👔' },
-                    { id: 'casual', label: 'Santai', icon: '😎' },
-                    { id: 'inspirational', label: 'Inspiratif', icon: '✨' },
-                    { id: 'witty', label: 'Witty', icon: '🧠' },
-                    { id: 'genz', label: 'Gen-Z', icon: '🚀' },
-                    { id: 'persuasive', label: 'Persuasif', icon: '🎯' },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setTone(t.id)}
+              {/* Optional Settings - Only for DevSpec */}
+              <AnimatePresence>
+                {appType === 'devspec' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    className="mb-6 relative z-10 overflow-visible pt-2 pb-4"
+                  >
+                    <button 
+                      onClick={() => setShowOptions(!showOptions)}
                       className={cn(
-                        "relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 font-bold text-xs border shadow-sm",
-                        tone === t.id 
-                          ? "bg-blue-600 border-blue-600 text-white shadow-blue-500/20 scale-105 z-10" 
-                          : "bg-white/50 dark:bg-slate-800/50 border-white/20 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"
+                        "flex items-center gap-3 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] rounded-[1.25rem] transition-all duration-500 mx-2 border-2",
+                        showOptions 
+                          ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30" 
+                          : "bg-white dark:bg-slate-900 border-indigo-100 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-800 shadow-sm hover:shadow-indigo-500/10 hover:-translate-y-0.5"
                       )}
                     >
-                      <span>{t.icon}</span>
-                      <span>{t.label}</span>
-                      {tone === t.id && (
-                        <motion.div 
-                          layoutId="activeTone"
-                          className="absolute inset-0 bg-blue-600 rounded-xl -z-10"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                        />
-                      )}
+                      <div className={cn(
+                        "w-5 h-5 rounded-lg flex items-center justify-center transition-colors duration-500",
+                        showOptions ? "bg-white/20" : "bg-indigo-50 dark:bg-indigo-900/30"
+                      )}>
+                        <Sparkles size={12} className={showOptions ? "animate-pulse" : ""} />
+                      </div>
+                      <span>Spesifikasi Arsitektur (Optional)</span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={cn("transition-transform duration-500 ml-0.5", showOptions ? "rotate-180" : "")}
+                      >
+                        <path d="m6 9 6 6 6-6"/>
+                      </svg>
                     </button>
-                  ))}
-                </div>
-              </div>
+                    
+                    <AnimatePresence>
+                      {showOptions && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                          className="mt-4 px-2 pb-6 overflow-visible"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Baris 1: Platform & Skalabilitas (Dropdown) */}
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Target Platform</label>
+                              <select
+                                value={targetPlatform}
+                                onChange={(e) => setTargetPlatform(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all text-slate-600 dark:text-slate-300"
+                              >
+                                <option value="">Semua / Tidak Spesifik</option>
+                                <option value="Web App Only">Web App Only</option>
+                                <option value="Mobile App Only (iOS/Android)">Mobile App Only (iOS/Android)</option>
+                                <option value="Desktop App Only">Desktop App Only</option>
+                                <option value="Cross-Platform (Web + Mobile)">Cross-Platform (Web + Mobile)</option>
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Target Skalabilitas</label>
+                              <select
+                                value={scalabilityTarget}
+                                onChange={(e) => setScalabilityTarget(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all text-slate-600 dark:text-slate-300"
+                              >
+                                <option value="">Normal / Tidak Spesifik</option>
+                                <option value="MVP / Hobby (Skala Kecil, Monolith)">MVP / Hobby (Skala Kecil)</option>
+                                <option value="Startup (10k+ User Aktif, Skalabel)">Startup (10k+ User Aktif)</option>
+                                <option value="Enterprise (High Traffic, Microservices)">Enterprise (High Traffic)</option>
+                              </select>
+                            </div>
+
+                            {/* Baris 2: Textarea (Alur & Fitur) */}
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Fitur Wajib Ada</label>
+                              <textarea
+                                value={requiredFeatures}
+                                onChange={(e) => setRequiredFeatures(e.target.value)}
+                                placeholder="Contoh: Login Google, Realtime Chat, Payment Gateway"
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm h-20 resize-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Alur Bisnis Spesifik</label>
+                              <textarea
+                                value={businessFlow}
+                                onChange={(e) => setBusinessFlow(e.target.value)}
+                                placeholder="Contoh: User login -> pilih produk -> checkout via Midtrans"
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm h-20 resize-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                              />
+                            </div>
+
+                            {/* Baris 3: Tabel & Anggaran */}
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Tabel/Data Wajib</label>
+                              <textarea
+                                value={requiredTables}
+                                onChange={(e) => setRequiredTables(e.target.value)}
+                                placeholder="Contoh: users (id, name), orders (id, total)"
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm h-20 resize-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Anggaran Server/Infra</label>
+                              <textarea
+                                value={budgetConstraints}
+                                onChange={(e) => setBudgetConstraints(e.target.value)}
+                                placeholder="Contoh: Gratis/Hobby Tier, VPS Murah ($5), AWS Bebas"
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm h-20 resize-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                              />
+                            </div>
+
+                            {/* Baris 4: Tema & Tech Stack */}
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Gaya Visual / Tema</label>
+                              <input
+                                type="text"
+                                value={themePrefs}
+                                onChange={(e) => setThemePrefs(e.target.value)}
+                                placeholder="Contoh: Dark Mode, Minimalis, Glassmorphism"
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">Preferensi Tech Stack</label>
+                              <input
+                                type="text"
+                                value={techStackPrefs}
+                                onChange={(e) => setTechStackPrefs(e.target.value)}
+                                placeholder="Contoh: Next.js, Tailwind, Supabase"
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-500/20 bg-white/50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                              />
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Brand Voice Selector - Only for Repurpose */}
+              <AnimatePresence>
+                {appType === 'repurpose' && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-10 relative z-10"
+                  >
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4 ml-2">
+                      Pilih Gaya Bahasa AI (Brand Voice)
+                    </p>
+                    <div className="flex flex-wrap gap-2 md:gap-3 p-1">
+                      {[
+                        { id: 'professional', label: 'Profesional', icon: '👔' },
+                        { id: 'casual', label: 'Santai', icon: '😎' },
+                        { id: 'inspirational', label: 'Inspiratif', icon: '✨' },
+                        { id: 'witty', label: 'Witty', icon: '🧠' },
+                        { id: 'genz', label: 'Gen-Z', icon: '🚀' },
+                        { id: 'persuasive', label: 'Persuasif', icon: '🎯' },
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setTone(t.id)}
+                          className={cn(
+                            "relative flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 font-bold text-xs border shadow-sm",
+                            tone === t.id 
+                              ? "bg-blue-600 border-blue-600 text-white shadow-blue-500/20 scale-105 z-10" 
+                              : "bg-white/50 dark:bg-slate-800/50 border-white/20 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800"
+                          )}
+                        >
+                          <span>{t.icon}</span>
+                          <span>{t.label}</span>
+                          {tone === t.id && (
+                            <motion.div 
+                              layoutId="activeTone"
+                              className="absolute inset-0 bg-blue-600 rounded-xl -z-10"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <motion.button
                 layout
                 transition={{ duration: 0.85, ease: [0.65, 0, 0.35, 1] as const }}
                 onClick={handleProcess}
                 disabled={loading || !input}
-                className="group relative w-full overflow-hidden bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-black py-4 md:py-5 rounded-2xl md:rounded-[2rem] flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-500/30 active:scale-[0.98] text-base md:text-lg"
+                className={cn(
+                  "group relative w-full overflow-hidden text-white font-black py-4 md:py-5 rounded-2xl md:rounded-[2rem] flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] text-base md:text-lg",
+                  appType === 'repurpose'
+                    ? "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 shadow-blue-500/30"
+                    : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 shadow-indigo-500/30"
+                )}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 {loading ? (
                   <>
                     <Loader2 className="animate-spin" />
-                    <span>Menganalisis Konten...</span>
+                    <span>{appType === 'repurpose' ? 'Menganalisis Konten...' : 'Merancang Arsitektur...'}</span>
                   </>
                 ) : (
                   <>
-                    <span className="tracking-widest">MULAI TRANSFORMASI ✨</span>
+                    <span className="tracking-widest">
+                      {appType === 'repurpose' ? 'MULAI TRANSFORMASI ✨' : 'GENERATE ARCHITECTURE ✨'}
+                    </span>
                     <ArrowUpRight size={24} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                   </>
                 )}
@@ -726,131 +1086,266 @@ export default function Home() {
               <section ref={resultsRef} className="py-32 px-6 transition-colors duration-500 scroll-mt-24">
                 <div className="container mx-auto max-w-7xl">
                   <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
                     className="text-center mb-24"
                   >
-                    <div className="inline-block px-5 py-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-8 font-black text-xs uppercase tracking-[0.3em]">
-                      Transformation Complete
+                    <div className={cn(
+                      "inline-block px-5 py-2 rounded-xl mb-8 font-black text-xs uppercase tracking-[0.3em]",
+                      appType === 'repurpose' ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" : "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400"
+                    )}>
+                      {appType === 'repurpose' ? 'Transformation Complete' : 'Specification Generated'}
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-extrabold mb-4 md:mb-6 font-display tracking-tight text-slate-900 dark:text-white">Konten Siap Publikasi</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto font-sans leading-relaxed">
-                      AI telah mengoptimalkan konten Anda untuk setiap platform. Salin hasil di bawah dan mulai bagikan ide Anda!
+                    <h2 className="text-3xl md:text-5xl font-extrabold mb-4 md:mb-6 font-display tracking-tight text-slate-900 dark:text-white">
+                      {appType === 'repurpose' ? 'Konten Siap Publikasi' : 'Technical Spec Selesai'}
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto font-sans leading-relaxed mb-10">
+                      {appType === 'repurpose' 
+                        ? 'AI telah mengoptimalkan konten Anda untuk setiap platform. Salin hasil di bawah dan mulai bagikan ide Anda!'
+                        : 'AI telah menyusun spesifikasi teknis mendalam berdasarkan konten Anda. Gunakan ini sebagai panduan atau system prompt untuk AI Coder.'}
                     </p>
+
+                    {appType === 'devspec' && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-wrap items-center justify-center gap-4 mt-6"
+                      >
+                        <button 
+                          onClick={handleCopyAllDevSpec}
+                          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all active:scale-95 group"
+                        >
+                          <Copy size={16} className="group-hover:rotate-12 transition-transform" />
+                          Copy All for AI Assistant
+                        </button>
+                        <button 
+                          onClick={handleDownloadDevSpec}
+                          className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-95 group"
+                        >
+                          <FileText size={16} className="group-hover:-translate-y-1 transition-transform" />
+                          Download .md File
+                        </button>
+                      </motion.div>
+                    )}
                   </motion.div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                    {results.x && (
-                      <ResultCard 
-                        index={0}
-                        title="X (Twitter)" 
-                        icon={<TwitterIcon size={20} />} 
-                        color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
-                        content={results.x} 
-                        onCopy={() => copyToClipboard(results.x, "Postingan X")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'X', content: results.x });
-                          setShowPreview(true);
-                        }}
-                      />
-                    )}
-                    {results.linkedin && (
-                      <ResultCard 
-                        index={1}
-                        title="LinkedIn Post" 
-                        icon={<LinkedinIcon size={20} />} 
-                        color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                        content={results.linkedin} 
-                        onCopy={() => copyToClipboard(results.linkedin, "Postingan LinkedIn")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'LinkedIn', content: results.linkedin });
-                          setShowPreview(true);
-                        }}
-                      />
-                    )}
-                    {results.instagram && (
-                      <ResultCard 
-                        index={2}
-                        title="Instagram Caption" 
-                        icon={<InstagramIcon size={20} />} 
-                        color="text-pink-600 bg-pink-50 dark:bg-pink-900/20"
-                        content={results.instagram} 
-                        onCopy={() => copyToClipboard(results.instagram, "Caption Instagram")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'Instagram', content: results.instagram });
-                          setShowPreview(true);
-                        }}
-                      />
-                    )}
-                    {results.tiktok && (
-                      <ResultCard 
-                        index={3}
-                        title="TikTok Script" 
-                        icon={<TiktokIcon size={20} />} 
-                        color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
-                        content={results.tiktok} 
-                        onCopy={() => copyToClipboard(results.tiktok, "Script TikTok")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'TikTok', content: results.tiktok });
-                          setShowPreview(true);
-                        }}
-                      />
-                    )}
-                    {results.newsletter && (
-                      <ResultCard 
-                        index={4}
-                        title="Newsletter" 
-                        icon={<MessageSquare size={20} />} 
-                        color="text-amber-600 bg-amber-50 dark:bg-amber-900/20"
-                        content={results.newsletter} 
-                        onCopy={() => copyToClipboard(results.newsletter, "Ringkasan Newsletter")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'Newsletter', content: results.newsletter });
-                          setShowPreview(true);
-                        }}
-                      />
-                    )}
-                    {results.threads && (
-                      <ResultCard 
-                        index={5}
-                        title="Threads" 
-                        icon={<ThreadsIcon size={20} />} 
-                        color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
-                        content={results.threads} 
-                        onCopy={() => copyToClipboard(results.threads, "Postingan Threads")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'Threads', content: results.threads });
-                          setShowPreview(true);
-                        }}
-                      />
-                    )}
-                    {results.highlights && (
-                      <ResultCard 
-                        index={6}
-                        title="Highlights" 
-                        icon={<Sparkles size={20} />} 
-                        color="text-purple-600 bg-purple-50 dark:bg-purple-900/20"
-                        content={results.highlights} 
-                        onCopy={() => copyToClipboard(results.highlights, "Video Highlights")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'Highlights', content: results.highlights });
-                          setShowPreview(true);
-                        }}
-                      />
-                    )}
-                    {results.blog && (
-                      <ResultCard 
-                        index={7}
-                        title="Blog Post" 
-                        icon={<FileText size={20} />} 
-                        color="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
-                        content={results.blog} 
-                        onCopy={() => copyToClipboard(results.blog, "SEO Blog Post")}
-                        onPreview={() => {
-                          setPreviewData({ platform: 'Blog', content: results.blog });
-                          setShowPreview(true);
-                        }}
-                      />
+                    {appType === 'repurpose' ? (
+                      <>
+                        {results.x && (
+                          <ResultCard 
+                            index={0}
+                            title="X (Twitter)" 
+                            icon={<TwitterIcon size={20} />} 
+                            color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                            content={results.x} 
+                            onCopy={() => copyToClipboard(results.x, "Postingan X")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'X', content: results.x });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.linkedin && (
+                          <ResultCard 
+                            index={1}
+                            title="LinkedIn Post" 
+                            icon={<LinkedinIcon size={20} />} 
+                            color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                            content={results.linkedin} 
+                            onCopy={() => copyToClipboard(results.linkedin, "Postingan LinkedIn")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'LinkedIn', content: results.linkedin });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.instagram && (
+                          <ResultCard 
+                            index={2}
+                            title="Instagram Caption" 
+                            icon={<InstagramIcon size={20} />} 
+                            color="text-pink-600 bg-pink-50 dark:bg-pink-900/20"
+                            content={results.instagram} 
+                            onCopy={() => copyToClipboard(results.instagram, "Caption Instagram")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Instagram', content: results.instagram });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.tiktok && (
+                          <ResultCard 
+                            index={3}
+                            title="TikTok Script" 
+                            icon={<TiktokIcon size={20} />} 
+                            color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                            content={results.tiktok} 
+                            onCopy={() => copyToClipboard(results.tiktok, "Script TikTok")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'TikTok', content: results.tiktok });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.newsletter && (
+                          <ResultCard 
+                            index={4}
+                            title="Newsletter" 
+                            icon={<MessageSquare size={20} />} 
+                            color="text-amber-600 bg-amber-50 dark:bg-amber-900/20"
+                            content={results.newsletter} 
+                            onCopy={() => copyToClipboard(results.newsletter, "Ringkasan Newsletter")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Newsletter', content: results.newsletter });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.threads && (
+                          <ResultCard 
+                            index={5}
+                            title="Threads" 
+                            icon={<ThreadsIcon size={20} />} 
+                            color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                            content={results.threads} 
+                            onCopy={() => copyToClipboard(results.threads, "Postingan Threads")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Threads', content: results.threads });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.highlights && (
+                          <ResultCard 
+                            index={6}
+                            title="Highlights" 
+                            icon={<Sparkles size={20} />} 
+                            color="text-purple-600 bg-purple-50 dark:bg-purple-900/20"
+                            content={results.highlights} 
+                            onCopy={() => copyToClipboard(results.highlights, "Video Highlights")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Highlights', content: results.highlights });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.blog && (
+                          <ResultCard 
+                            index={7}
+                            title="Blog Post" 
+                            icon={<FileText size={20} />} 
+                            color="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
+                            content={results.blog} 
+                            onCopy={() => copyToClipboard(results.blog, "SEO Blog Post")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Blog', content: results.blog });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {results.context && (
+                          <ResultCard 
+                            index={0}
+                            title="Project Context" 
+                            icon={<Search size={20} />} 
+                            color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                            content={results.context} 
+                            onCopy={() => copyToClipboard(results.context, "Project Context")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Context', content: results.context });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.features && (
+                          <ResultCard 
+                            index={1}
+                            title="Functional Features" 
+                            icon={<Sparkles size={20} />} 
+                            color="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
+                            content={results.features} 
+                            onCopy={() => copyToClipboard(results.features, "Features")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Features', content: results.features });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.tech_stack && (
+                          <ResultCard 
+                            index={2}
+                            title="Tech Stack" 
+                            icon={<RefreshCw size={20} />} 
+                            color="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                            content={results.tech_stack} 
+                            onCopy={() => copyToClipboard(results.tech_stack, "Tech Stack")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Tech Stack', content: results.tech_stack });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.project_structure && (
+                          <ResultCard 
+                            index={3}
+                            title="Project Architecture" 
+                            icon={<HistoryIcon size={20} />} 
+                            color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                            content={results.project_structure} 
+                            onCopy={() => copyToClipboard(results.project_structure, "Project Architecture")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Architecture', content: results.project_structure });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.data_schema && (
+                          <ResultCard 
+                            index={4}
+                            title="Data Schema" 
+                            icon={<FileText size={20} />} 
+                            color="text-orange-600 bg-orange-50 dark:bg-orange-900/20"
+                            content={results.data_schema} 
+                            onCopy={() => copyToClipboard(results.data_schema, "Data Schema")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'Data Schema', content: results.data_schema });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.system_prompt && (
+                          <ResultCard 
+                            index={5}
+                            title="AI System Prompt" 
+                            icon={<MessageCircle size={20} />} 
+                            color="text-purple-600 bg-purple-50 dark:bg-purple-900/20"
+                            content={results.system_prompt} 
+                            onCopy={() => copyToClipboard(results.system_prompt, "System Prompt")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'System Prompt', content: results.system_prompt });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                        {results.user_stories && (
+                          <ResultCard 
+                            index={6}
+                            title="User Stories" 
+                            icon={<Clock size={20} />} 
+                            color="text-pink-600 bg-pink-50 dark:bg-pink-900/20"
+                            content={results.user_stories} 
+                            onCopy={() => copyToClipboard(results.user_stories, "User Stories")}
+                            onPreview={() => {
+                              setPreviewData({ platform: 'User Stories', content: results.user_stories });
+                              setShowPreview(true);
+                            }}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -877,6 +1372,134 @@ export default function Home() {
           Pusat Bantuan
         </div>
       </button>
+
+      {/* DevSpec Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 40 }}
+              className="relative bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-4xl overflow-hidden shadow-2xl border border-white/20 dark:border-slate-800"
+            >
+              <div className="p-8 md:p-12">
+                <div className="flex items-center gap-5 mb-8">
+                  <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/40">
+                    <Terminal size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">Architecture Review</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">Tinjau parameter spesifikasi sebelum AI bekerja.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto px-4 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                  {/* Bagian 1: Sumber Data */}
+                  <div className="p-6 rounded-2xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/30">
+                    <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-3">Input Source ({mode === 'url' ? 'Link/URL' : 'Draft Text'})</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-mono line-clamp-2 bg-white/50 dark:bg-slate-950/50 p-3 rounded-lg border border-blue-100/20">
+                      {input}
+                    </p>
+                  </div>
+
+                  {/* Bagian 2: Grid Parameter Teknis (2 Kolom Penuh) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Platform</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {targetPlatform || 'AI Recommendation (Universal Multi-Platform)'}
+                      </p>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Scalability Target</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {scalabilityTarget || 'AI-Optimized (Scalable Micro-Architecture)'}
+                      </p>
+                    </div>
+                    
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Core Features</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
+                        {requiredFeatures || 'Context-Aware Functional Modules'}
+                      </p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Business Flow Logic</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
+                        {businessFlow || 'Architecture-Derived Workflow Logic'}
+                      </p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Database & Data Schema</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
+                        {requiredTables || 'Standardized Entity-Relationship Schema'}
+                      </p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tech Stack Preference</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {techStackPrefs || 'AI-Curated Performance Stack'}
+                      </p>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">UI/UX Theme</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {themePrefs || 'AI-Designed Premium Interface'}
+                      </p>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Infrastructure & Budget</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {budgetConstraints || 'Elastic & Auto-Scaling Infrastructure'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 mt-10 p-6 bg-amber-50/30 dark:bg-amber-900/10 rounded-3xl border border-amber-200/20">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100/50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 shrink-0">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest">Konfirmasi Biaya</p>
+                      <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 font-medium leading-relaxed">
+                        Aksi ini akan memotong <span className="font-bold underline text-amber-900 dark:text-amber-200">3 Kredit</span> dari saldo Anda.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 w-full md:w-auto">
+                  <button 
+                    onClick={() => setShowConfirmModal(false)}
+                    className="py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    onClick={handleProcess}
+                    className="py-4 px-6 rounded-2xl bg-indigo-600 text-white font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    Confirm & Generate <ArrowUpRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Support Modal */}
       <AnimatePresence>
@@ -1265,11 +1888,15 @@ export default function Home() {
                         <div className="flex items-center gap-5 flex-1 min-w-0">
                           <div className={cn(
                             "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-3",
-                            item.mode === 'url' 
-                              ? "bg-red-500 text-white shadow-red-500/20" 
-                              : "bg-blue-600 text-white shadow-blue-600/20"
+                            (item.app_type || 'repurpose') === 'devspec'
+                              ? "bg-indigo-600 text-white shadow-indigo-600/20"
+                              : item.mode === 'url' 
+                                ? "bg-red-500 text-white shadow-red-500/20" 
+                                : "bg-blue-600 text-white shadow-blue-600/20"
                           )}>
-                            {item.mode === 'url' ? <YoutubeIcon size={24} /> : <FileText size={24} />}
+                            {(item.app_type || 'repurpose') === 'devspec' 
+                              ? <Sparkles size={24} /> 
+                              : item.mode === 'url' ? <YoutubeIcon size={24} /> : <FileText size={24} />}
                           </div>
                           
                           <div className="min-w-0 flex-1 overflow-hidden">
@@ -1299,14 +1926,28 @@ export default function Home() {
                         <div className="flex items-center justify-between md:justify-end gap-6 md:border-l border-slate-100 dark:border-slate-800 md:pl-6">
                           <div className="flex items-center gap-3">
                             <div className="flex -space-x-1.5">
-                              {item.results.x && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900 shadow-sm"><TwitterIcon size={12} /></div>}
-                              {item.results.linkedin && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900 shadow-sm"><LinkedinIcon size={12} /></div>}
-                              {item.results.instagram && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900 shadow-sm"><InstagramIcon size={12} /></div>}
-                              {item.results.tiktok && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900 shadow-sm"><TiktokIcon size={12} /></div>}
-                              {item.results.newsletter && <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 border-2 border-white dark:border-slate-900 shadow-sm"><MessageSquare size={12} /></div>}
-                              {item.results.threads && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900 shadow-sm"><ThreadsIcon size={12} /></div>}
-                              {item.results.highlights && <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 border-2 border-white dark:border-slate-900 shadow-sm"><Sparkles size={12} /></div>}
-                              {item.results.blog && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900 shadow-sm"><FileText size={12} /></div>}
+                              {(item.app_type || 'repurpose') === 'repurpose' ? (
+                                <>
+                                  {item.results.x && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900 shadow-sm"><TwitterIcon size={12} /></div>}
+                                  {item.results.linkedin && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900 shadow-sm"><LinkedinIcon size={12} /></div>}
+                                  {item.results.instagram && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900 shadow-sm"><InstagramIcon size={12} /></div>}
+                                  {item.results.tiktok && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900 shadow-sm"><TiktokIcon size={12} /></div>}
+                                  {item.results.newsletter && <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 border-2 border-white dark:border-slate-900 shadow-sm"><MessageSquare size={12} /></div>}
+                                  {item.results.threads && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white border-2 border-white dark:border-slate-900 shadow-sm"><ThreadsIcon size={12} /></div>}
+                                  {item.results.highlights && <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 border-2 border-white dark:border-slate-900 shadow-sm"><Sparkles size={12} /></div>}
+                                  {item.results.blog && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900 shadow-sm"><FileText size={12} /></div>}
+                                </>
+                              ) : (
+                                <>
+                                  {item.results.context && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900 shadow-sm"><Search size={12} /></div>}
+                                  {item.results.features && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900 shadow-sm"><Sparkles size={12} /></div>}
+                                  {item.results.tech_stack && <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 border-2 border-white dark:border-slate-900 shadow-sm"><RefreshCw size={12} /></div>}
+                                  {item.results.project_structure && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900 shadow-sm"><HistoryIcon size={12} /></div>}
+                                  {item.results.data_schema && <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 border-2 border-white dark:border-slate-900 shadow-sm"><FileText size={12} /></div>}
+                                  {item.results.system_prompt && <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 border-2 border-white dark:border-slate-900 shadow-sm"><MessageCircle size={12} /></div>}
+                                  {item.results.user_stories && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900 shadow-sm"><Clock size={12} /></div>}
+                                </>
+                              )}
                             </div>
                           </div>
 
@@ -1402,7 +2043,7 @@ function ResultCard({ title, icon, content, onCopy, onPreview, index, color }: a
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 group"
+      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/40 dark:border-slate-800/40 flex flex-col h-full shadow-xl shadow-blue-500/5 hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-700 group overflow-hidden"
     >
       <div className="p-6 border-b border-white/40 dark:border-slate-800/40 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60 transition-colors duration-500">
         <div className="flex items-center gap-4 font-black text-slate-900 dark:text-white">

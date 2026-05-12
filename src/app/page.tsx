@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw, Search, ArrowLeft, Terminal, AlertTriangle } from 'lucide-react';
+import { FileText, MessageSquare, Copy, Check, Loader2, History as HistoryIcon, Trash2, ArrowUpRight, Sparkles, Eye, LifeBuoy, Send, Clock, CheckCircle2, MessageCircle, RefreshCw, Search, ArrowLeft, Terminal, AlertTriangle, Zap, Users } from 'lucide-react';
 import { processContent, getHistory, deleteHistory, createTicket, getTickets, getTicketMessages, sendTicketMessage } from './actions';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -477,8 +477,9 @@ export default function Home() {
     }
   }, [selectedTicketId]);
 
-  const copyToClipboard = (text: string, title: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = (text: any, title: string) => {
+    const content = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+    navigator.clipboard.writeText(content);
     toast.success(`${title} disalin ke clipboard`, {
       description: "Anda siap untuk mempostingnya!",
     });
@@ -486,7 +487,8 @@ export default function Home() {
 
   const handleCopyAllDevSpec = () => {
     if (!results) return;
-    const mdContent = `# Technical Specification\n\n## Project Context\n${results.context}\n\n## Functional Features\n${results.features}\n\n## Tech Stack\n${results.tech_stack}\n\n## Data Schema\n${results.data_schema}\n\n## Project Architecture\n${results.project_structure}\n\n## System Prompt for AI\n${results.system_prompt}\n\n## User Stories\n${results.user_stories}`;
+    const formatVal = (v: any) => typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+    const mdContent = `# Technical Specification\n\n## Project Context\n${formatVal(results.context)}\n\n## Functional Features\n${formatVal(results.features)}\n\n## Tech Stack\n${formatVal(results.tech_stack)}\n\n## Data Schema\n${formatVal(results.data_schema)}\n\n## Project Architecture\n${formatVal(results.project_structure)}\n\n## System Prompt for AI\n${formatVal(results.system_prompt)}\n\n## User Stories\n${formatVal(results.user_stories)}`;
     navigator.clipboard.writeText(mdContent);
     toast.success('Seluruh Spek disalin!', {
       description: 'Format Markdown sudah dioptimalkan untuk Cursor/Windsurf.',
@@ -1255,10 +1257,6 @@ export default function Home() {
                             color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
                             content={results.context} 
                             onCopy={() => copyToClipboard(results.context, "Project Context")}
-                            onPreview={() => {
-                              setPreviewData({ platform: 'Context', content: results.context });
-                              setShowPreview(true);
-                            }}
                           />
                         )}
                         {results.features && (
@@ -1269,24 +1267,16 @@ export default function Home() {
                             color="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
                             content={results.features} 
                             onCopy={() => copyToClipboard(results.features, "Features")}
-                            onPreview={() => {
-                              setPreviewData({ platform: 'Features', content: results.features });
-                              setShowPreview(true);
-                            }}
                           />
                         )}
                         {results.tech_stack && (
                           <ResultCard 
                             index={2}
                             title="Tech Stack" 
-                            icon={<RefreshCw size={20} />} 
-                            color="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                            icon={<Zap size={20} />} 
+                            color="text-blue-600 bg-blue-50 dark:bg-blue-900/20"
                             content={results.tech_stack} 
                             onCopy={() => copyToClipboard(results.tech_stack, "Tech Stack")}
-                            onPreview={() => {
-                              setPreviewData({ platform: 'Tech Stack', content: results.tech_stack });
-                              setShowPreview(true);
-                            }}
                           />
                         )}
                         {results.project_structure && (
@@ -1297,10 +1287,6 @@ export default function Home() {
                             color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
                             content={results.project_structure} 
                             onCopy={() => copyToClipboard(results.project_structure, "Project Architecture")}
-                            onPreview={() => {
-                              setPreviewData({ platform: 'Architecture', content: results.project_structure });
-                              setShowPreview(true);
-                            }}
                           />
                         )}
                         {results.data_schema && (
@@ -1311,10 +1297,6 @@ export default function Home() {
                             color="text-orange-600 bg-orange-50 dark:bg-orange-900/20"
                             content={results.data_schema} 
                             onCopy={() => copyToClipboard(results.data_schema, "Data Schema")}
-                            onPreview={() => {
-                              setPreviewData({ platform: 'Data Schema', content: results.data_schema });
-                              setShowPreview(true);
-                            }}
                           />
                         )}
                         {results.system_prompt && (
@@ -1325,24 +1307,16 @@ export default function Home() {
                             color="text-purple-600 bg-purple-50 dark:bg-purple-900/20"
                             content={results.system_prompt} 
                             onCopy={() => copyToClipboard(results.system_prompt, "System Prompt")}
-                            onPreview={() => {
-                              setPreviewData({ platform: 'System Prompt', content: results.system_prompt });
-                              setShowPreview(true);
-                            }}
                           />
                         )}
                         {results.user_stories && (
                           <ResultCard 
                             index={6}
                             title="User Stories" 
-                            icon={<Clock size={20} />} 
-                            color="text-pink-600 bg-pink-50 dark:bg-pink-900/20"
+                            icon={<Users size={20} />} 
+                            color="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
                             content={results.user_stories} 
                             onCopy={() => copyToClipboard(results.user_stories, "User Stories")}
-                            onPreview={() => {
-                              setPreviewData({ platform: 'User Stories', content: results.user_stories });
-                              setShowPreview(true);
-                            }}
                           />
                         )}
                       </>
@@ -2053,13 +2027,15 @@ function ResultCard({ title, icon, content, onCopy, onPreview, index, color }: a
           <span className="text-lg tracking-tight">{title}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={onPreview}
-            className="p-2.5 bg-white/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all duration-300 border border-slate-100 dark:border-slate-700"
-            title="Lihat Preview"
-          >
-            <Eye size={18} />
-          </button>
+          {onPreview && (
+            <button 
+              onClick={onPreview}
+              className="p-2.5 bg-white/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all duration-300 border border-slate-100 dark:border-slate-700"
+              title="Lihat Preview"
+            >
+              <Eye size={18} />
+            </button>
+          )}
           <button 
             onClick={handleCopy}
             className={cn(
@@ -2083,7 +2059,7 @@ function ResultCard({ title, icon, content, onCopy, onPreview, index, color }: a
         </div>
       </div>
       <div className="p-5 md:p-6 flex-1 whitespace-pre-wrap text-sm md:text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 overflow-auto max-h-[400px] md:max-h-[500px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 font-sans font-medium">
-        {content}
+        {typeof content === 'string' ? content : JSON.stringify(content, null, 2)}
       </div>
     </motion.div>
   );

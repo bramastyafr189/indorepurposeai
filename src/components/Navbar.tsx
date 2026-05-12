@@ -120,11 +120,17 @@ export function Navbar() {
   };
 
   if (!mounted) return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md font-sans">
+    <nav className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md font-sans">
       <div className="container mx-auto flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-2">
-          <Share2 className="text-blue-600" size={24} />
-          <span className="text-xl font-bold tracking-tight">IndoRepurpose AI</span>
+          <div className="rounded-2xl bg-blue-600 p-2 shadow-xl shadow-blue-500/20">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="8" width="12" height="12" rx="3" stroke="currentColor" strokeWidth="2" strokeOpacity="0.4" />
+              <rect x="4" y="4" width="12" height="12" rx="3" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="2" />
+              <path d="M9 8.5L13 10L9 11.5V8.5Z" fill="currentColor" />
+            </svg>
+          </div>
+          <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">IndoRepurpose<span className="text-blue-600">AI</span></span>
         </div>
       </div>
     </nav>

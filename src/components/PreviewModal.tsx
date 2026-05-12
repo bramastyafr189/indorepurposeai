@@ -10,10 +10,11 @@ interface PreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   platform: string;
-  content: string;
+  content: string | any;
 }
 
-export const PreviewModal = ({ isOpen, onClose, platform, content }: PreviewModalProps) => {
+export const PreviewModal = ({ isOpen, onClose, platform, content: rawContent }: PreviewModalProps) => {
+  const content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2);
   const [activeSlide, setActiveSlide] = React.useState(0);
 
   React.useEffect(() => {

@@ -261,19 +261,21 @@ export const generateDevSpec = async (
 
   STRUKTUR OUTPUT (WAJIB JSON):
   1. context: Ringkasan proyek dan tujuan utamanya.
-  2. features: Daftar fitur fungsional yang harus dibangun (ekstrak detail dari konten).
-  3. tech_stack: Rekomendasi teknologi (Frontend, Backend, Database, Auth, dll) yang paling efisien.
-  4. data_schema: Rancangan skema data atau tabel database yang diperlukan (gunakan format Markdown Table atau code block).
-  5. project_structure: Rekomendasi struktur folder dan file proyek yang bersih dan scalable (gunakan format tree structure).
-  6. system_prompt: Instruksi sistem 'ready-to-use' yang bisa langsung disalin ke AI Coder sebagai context utama.
-  7. user_stories: Skenario penggunaan fitur dari sisi pengguna akhir.
+  2. features: Daftar fitur fungsional yang harus dibangun.
+  3. tech_stack: Rekomendasi teknologi yang paling efisien.
+  4. data_schema: Rancangan skema data atau tabel database (Markdown Table).
+  5. api_endpoints: Rancangan endpoint API utama (Method, Path, dan Deskripsi).
+  6. project_structure: Rekomendasi struktur folder dan file proyek.
+  7. security_auth: Strategi keamanan dan implementasi autentikasi.
+  8. system_prompt: Instruksi sistem 'ready-to-use' untuk AI Coder.
+  9. user_stories: Skenario penggunaan dari sisi pengguna akhir.
 
   Konten: ${content}
 
   ATURAN OUTPUT (WAJIB):
   1. Kembalikan HASIL HANYA DALAM FORMAT JSON MURNI.
-  2. Kunci JSON: context, features, tech_stack, data_schema, project_structure, system_prompt, user_stories.
-  3. Gunakan Bahasa Indonesia untuk penjelasan, tapi gunakan istilah teknis standar (Inggris) untuk variabel, database, dan arsitektur.
+  2. Kunci JSON: context, features, tech_stack, data_schema, api_endpoints, project_structure, security_auth, system_prompt, user_stories.
+  3. Gunakan Bahasa Indonesia untuk penjelasan, tapi gunakan istilah teknis standar (Inggris).
   4. Setiap nilai harus berupa SATU STRING TUNGGAL. Gunakan "\\n" untuk baris baru.
   5. JANGAN gunakan markdown code blocks di luar blok JSON utama.`;
 

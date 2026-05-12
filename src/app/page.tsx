@@ -28,6 +28,7 @@ interface HistoryItem {
   tone: string;
   results: any;
   app_type?: 'repurpose' | 'devspec';
+  parameters?: any;
 }
 
 export default function Home() {
@@ -488,7 +489,7 @@ export default function Home() {
   const handleCopyAllDevSpec = () => {
     if (!results) return;
     const formatVal = (v: any) => typeof v === 'string' ? v : JSON.stringify(v, null, 2);
-    const mdContent = `# Technical Specification\n\n## Project Context\n${formatVal(results.context)}\n\n## Functional Features\n${formatVal(results.features)}\n\n## Tech Stack\n${formatVal(results.tech_stack)}\n\n## Data Schema\n${formatVal(results.data_schema)}\n\n## Project Architecture\n${formatVal(results.project_structure)}\n\n## System Prompt for AI\n${formatVal(results.system_prompt)}\n\n## User Stories\n${formatVal(results.user_stories)}`;
+    const mdContent = `# Technical Specification\n\n## Project Context\n${formatVal(results.context)}\n\n## Functional Features\n${formatVal(results.features)}\n\n## Tech Stack\n${formatVal(results.tech_stack)}\n\n## Data Schema\n${formatVal(results.data_schema)}\n\n## API Endpoints\n${formatVal(results.api_endpoints)}\n\n## Project Architecture\n${formatVal(results.project_structure)}\n\n## Security & Authentication\n${formatVal(results.security_auth)}\n\n## System Prompt for AI\n${formatVal(results.system_prompt)}\n\n## User Stories\n${formatVal(results.user_stories)}`;
     navigator.clipboard.writeText(mdContent);
     toast.success('Seluruh Spek disalin!', {
       description: 'Format Markdown sudah dioptimalkan untuk Cursor/Windsurf.',
@@ -1279,16 +1280,6 @@ export default function Home() {
                             onCopy={() => copyToClipboard(results.tech_stack, "Tech Stack")}
                           />
                         )}
-                        {results.project_structure && (
-                          <ResultCard 
-                            index={3}
-                            title="Project Architecture" 
-                            icon={<HistoryIcon size={20} />} 
-                            color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
-                            content={results.project_structure} 
-                            onCopy={() => copyToClipboard(results.project_structure, "Project Architecture")}
-                          />
-                        )}
                         {results.data_schema && (
                           <ResultCard 
                             index={4}
@@ -1299,9 +1290,39 @@ export default function Home() {
                             onCopy={() => copyToClipboard(results.data_schema, "Data Schema")}
                           />
                         )}
-                        {results.system_prompt && (
+                        {results.api_endpoints && (
                           <ResultCard 
                             index={5}
+                            title="API Endpoints" 
+                            icon={<Terminal size={20} />} 
+                            color="text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
+                            content={results.api_endpoints} 
+                            onCopy={() => copyToClipboard(results.api_endpoints, "API Endpoints")}
+                          />
+                        )}
+                        {results.project_structure && (
+                          <ResultCard 
+                            index={6}
+                            title="Project Architecture" 
+                            icon={<HistoryIcon size={20} />} 
+                            color="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800"
+                            content={results.project_structure} 
+                            onCopy={() => copyToClipboard(results.project_structure, "Project Architecture")}
+                          />
+                        )}
+                        {results.security_auth && (
+                          <ResultCard 
+                            index={7}
+                            title="Security & Auth" 
+                            icon={<CheckCircle2 size={20} />} 
+                            color="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                            content={results.security_auth} 
+                            onCopy={() => copyToClipboard(results.security_auth, "Security & Auth")}
+                          />
+                        )}
+                        {results.system_prompt && (
+                          <ResultCard 
+                            index={8}
                             title="AI System Prompt" 
                             icon={<MessageCircle size={20} />} 
                             color="text-purple-600 bg-purple-50 dark:bg-purple-900/20"
@@ -1311,10 +1332,10 @@ export default function Home() {
                         )}
                         {results.user_stories && (
                           <ResultCard 
-                            index={6}
+                            index={9}
                             title="User Stories" 
                             icon={<Users size={20} />} 
-                            color="text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20"
+                            color="text-pink-600 bg-pink-50 dark:bg-pink-900/20"
                             content={results.user_stories} 
                             onCopy={() => copyToClipboard(results.user_stories, "User Stories")}
                           />
@@ -1863,33 +1884,66 @@ export default function Home() {
                           <div className={cn(
                             "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-3",
                             (item.app_type || 'repurpose') === 'devspec'
-                              ? "bg-indigo-600 text-white shadow-indigo-600/20"
+                              ? "bg-blue-600 text-white shadow-blue-600/20"
                               : item.mode === 'url' 
                                 ? "bg-red-500 text-white shadow-red-500/20" 
                                 : "bg-blue-600 text-white shadow-blue-600/20"
                           )}>
                             {(item.app_type || 'repurpose') === 'devspec' 
-                              ? <Sparkles size={24} /> 
+                              ? (
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white" xmlns="http://www.w3.org/2000/svg">
+                                  <rect x="8" y="8" width="12" height="12" rx="3" stroke="currentColor" strokeWidth="2" strokeOpacity="0.4" />
+                                  <rect x="4" y="4" width="12" height="12" rx="3" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="2" />
+                                  <path d="M9 8.5L13 10L9 11.5V8.5Z" fill="currentColor" />
+                                </svg>
+                              ) 
                               : item.mode === 'url' ? <YoutubeIcon size={24} /> : <FileText size={24} />}
                           </div>
                           
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className={cn(
-                                "text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border",
-                                item.mode === 'url' 
-                                  ? "bg-red-50 dark:bg-red-900/20 text-red-600 border-red-100 dark:border-red-900/30" 
-                                  : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-100 dark:border-blue-900/30"
-                              )}>
-                                {item.mode === 'url' ? 'YouTube' : 'Teks'}
-                              </span>
-                              <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
-                                {item.tone}
-                              </span>
+                              {item.app_type !== 'devspec' ? (
+                                <>
+                                  <span className={cn(
+                                    "text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border",
+                                    item.mode === 'url' 
+                                      ? "bg-red-50 dark:bg-red-900/20 text-red-600 border-red-100 dark:border-red-900/30" 
+                                      : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-100 dark:border-blue-900/30"
+                                  )}>
+                                    {item.mode === 'url' ? 'YouTube' : 'Teks'}
+                                  </span>
+                                  <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                                    {item.tone}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-blue-600 text-white border-transparent">
+                                  Technical Spec
+                                </span>
+                              )}
                             </div>
                             <h3 className="font-black text-lg md:text-xl text-slate-900 dark:text-white line-clamp-1 break-all leading-tight">
                               {item.input}
                             </h3>
+                            
+                            {/* Parameters Badges for DevSpec */}
+                            {item.app_type === 'devspec' && item.parameters && (
+                              <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+                                {Object.entries({
+                                  'Flow': item.parameters.businessFlow,
+                                  'Tables': item.parameters.requiredTables,
+                                  'Tech': item.parameters.techStackPrefs,
+                                  'Features': item.parameters.requiredFeatures,
+                                  'Platform': item.parameters.targetPlatform,
+                                  'Budget': item.parameters.budgetConstraints
+                                }).filter(([_, val]) => val && val.trim() !== '').map(([label, val]) => (
+                                  <span key={label} className="text-[7px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 text-blue-500 dark:text-blue-400 border border-blue-100/50 dark:border-blue-800/30">
+                                    {label}: {val.toString().substring(0, 20)}{val.toString().length > 20 ? '...' : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider flex items-center gap-2">
                               <Clock size={10} />
                               {new Date(item.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} • {new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
@@ -1915,11 +1969,13 @@ export default function Home() {
                                 <>
                                   {item.results.context && <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 border-2 border-white dark:border-slate-900 shadow-sm"><Search size={12} /></div>}
                                   {item.results.features && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900 shadow-sm"><Sparkles size={12} /></div>}
-                                  {item.results.tech_stack && <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 border-2 border-white dark:border-slate-900 shadow-sm"><RefreshCw size={12} /></div>}
-                                  {item.results.project_structure && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900 shadow-sm"><HistoryIcon size={12} /></div>}
+                                  {item.results.tech_stack && <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 border-2 border-white dark:border-slate-900 shadow-sm"><Zap size={12} /></div>}
                                   {item.results.data_schema && <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 border-2 border-white dark:border-slate-900 shadow-sm"><FileText size={12} /></div>}
+                                  {item.results.api_endpoints && <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 border-2 border-white dark:border-slate-900 shadow-sm"><Terminal size={12} /></div>}
+                                  {item.results.project_structure && <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 border-2 border-white dark:border-slate-900 shadow-sm"><HistoryIcon size={12} /></div>}
+                                  {item.results.security_auth && <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 border-2 border-white dark:border-slate-900 shadow-sm"><CheckCircle2 size={12} /></div>}
                                   {item.results.system_prompt && <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 border-2 border-white dark:border-slate-900 shadow-sm"><MessageCircle size={12} /></div>}
-                                  {item.results.user_stories && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900 shadow-sm"><Clock size={12} /></div>}
+                                  {item.results.user_stories && <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-600 border-2 border-white dark:border-slate-900 shadow-sm"><Users size={12} /></div>}
                                 </>
                               )}
                             </div>

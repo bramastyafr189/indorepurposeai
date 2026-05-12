@@ -152,7 +152,9 @@ export async function processContent(
           data_schema: results.data_schema,
           project_structure: results.project_structure,
           system_prompt: results.system_prompt,
-          user_stories: results.user_stories
+          user_stories: results.user_stories,
+          api_endpoints: results.api_endpoints,
+          security_auth: results.security_auth
         }]);
       saveError = error;
     } else {
@@ -252,7 +254,19 @@ export async function getHistory() {
         data_schema: item.data_schema,
         project_structure: item.project_structure,
         system_prompt: item.system_prompt,
-        user_stories: item.user_stories
+        user_stories: item.user_stories,
+        api_endpoints: item.api_endpoints,
+        security_auth: item.security_auth
+      },
+      parameters: {
+        businessFlow: item.business_flow,
+        requiredTables: item.required_tables,
+        techStackPrefs: item.tech_stack_prefs,
+        requiredFeatures: item.required_features,
+        themePrefs: item.theme_prefs,
+        targetPlatform: item.target_platform,
+        scalabilityTarget: item.scalability_target,
+        budgetConstraints: item.budget_constraints
       }
     }));
 
